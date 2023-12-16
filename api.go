@@ -19,13 +19,14 @@ type APIServer struct {
 type EndpointHandler func(w http.ResponseWriter, r *http.Request) error
 
 type APIError struct {
-	Error string
+	Error string `json:"error"`
 }
 
 func (s *APIServer) Run() error {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/highlight", makeHTTPHandler(s.handleHighlights))
+	router.HandleFunc("/highlight/{id}", makeHTTPHandler(s.handleHighlightsById))
 
 	log.Println("Listening on", s.addr)
 
@@ -44,6 +45,18 @@ func (s *APIServer) handleHighlights(w http.ResponseWriter, r *http.Request) err
 	return fmt.Errorf("method %s not allowed", r.Method)
 }
 
+func (s *APIServer) handleHighlightsById(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == http.MethodGet {
+		return s.handleGetHighlight(w, r)
+	}
+
+	if r.Method == http.MethodDelete {
+		return s.handleDeleteHighlight(w, r)
+	}
+
+	return fmt.Errorf("method %s not allowed", r.Method)
+}
+
 func (s *APIServer) handleGetHighlights(w http.ResponseWriter, r *http.Request) error {
 	highlights, err := s.store.GetHighlights()
 	if err != nil {
@@ -51,6 +64,38 @@ func (s *APIServer) handleGetHighlights(w http.ResponseWriter, r *http.Request) 
 	}
 
 	return WriteJSON(w, http.StatusOK, highlights)
+}
+
+func (s *APIServer) handleDeleteHighlight(w http.ResponseWriter, r *http.Request) error {
+	id, err := getIdFromRequest(r)
+	if err != nil {
+		return err
+	}
+
+	err = s.store.DeleteHighlight(id)
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, nil)
+}
+
+func (s *APIServer) handleGetHighlight(w http.ResponseWriter, r *http.Request) error {
+	id, err := getIdFromRequest(r)
+	if err != nil {
+		return err
+	}
+
+	h, err := s.store.GetHighlightByID(id)
+	if err != nil {
+		return err
+	}
+
+	if h.ID == 0 {
+		return WriteJSON(w, http.StatusNotFound, APIError{Error: fmt.Errorf("highlight with id %d not found", id).Error()})
+	}
+
+	return WriteJSON(w, http.StatusOK, h)
 
 }
 

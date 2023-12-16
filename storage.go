@@ -2,52 +2,35 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
-	"log"
 
-	"github.com/go-sql-driver/mysql"
 	t "github.com/sikozonpc/notebase/types"
 )
 
 type Storage interface {
-	GetHighlights() ([]t.Highlight, error)
+	GetHighlights() ([]*t.Highlight, error)
+	GetHighlightByID(id int) (*t.Highlight, error)
 	CreateHighlight(t.Highlight) error
+	DeleteHighlight(id int) error
 }
 
 type MySQLStorage struct {
 	db *sql.DB
 }
 
-func NewMySQLStorage(cfg mysql.Config) (*MySQLStorage, error) {
-	var err error
-	db, err := sql.Open("mysql", cfg.FormatDSN())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pingErr := db.Ping()
-	if pingErr != nil {
-		log.Fatal(pingErr)
-	}
-	fmt.Println("Connected!")
-
-	return &MySQLStorage{db: db}, nil
-}
-
-func (s *MySQLStorage) GetHighlights() ([]t.Highlight, error) {
+func (s *MySQLStorage) GetHighlights() ([]*t.Highlight, error) {
 	rows, err := s.db.Query("SELECT * FROM highlights")
 	if err != nil {
 		return nil, err
 	}
 
-	var highlights []t.Highlight
+	var highlights []*t.Highlight
 	for rows.Next() {
-		var highlight t.Highlight
-		err := rows.Scan(&highlight.ID, &highlight.Text, &highlight.Location, &highlight.Note, &highlight.UserId, &highlight.BookId, &highlight.CreatedAt, &highlight.UpdatedAt)
+		h, err := scanRowsIntoHighlight(rows)
 		if err != nil {
 			return nil, err
 		}
-		highlights = append(highlights, highlight)
+
+		highlights = append(highlights, h)
 	}
 
 	return highlights, nil
@@ -62,33 +45,28 @@ func (s *MySQLStorage) CreateHighlight(highlight t.Highlight) error {
 	return nil
 }
 
-func (s *MySQLStorage) Init() error {
-	err := s.createHighlightsTable()
+func (s *MySQLStorage) GetHighlightByID(id int) (*t.Highlight, error) {
+	rows, err := s.db.Query("SELECT * FROM highlights WHERE id = ?", id)
+	if err != nil {
+		return nil, err
+	}
+
+	h := new(t.Highlight)
+	for rows.Next() {
+		h, err = scanRowsIntoHighlight(rows)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return h, nil
+}
+
+func (s *MySQLStorage) DeleteHighlight(id int) error {
+	_, err := s.db.Exec("DELETE FROM highlights WHERE id = ?", id)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
-
-func (s *MySQLStorage) createHighlightsTable() error {
-	_, err := s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS highlights (
-			id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-			text TEXT,
-			location VARCHAR(255),
-			note TEXT,
-			userId INT UNSIGNED NOT NULL,
-			bookId INT UNSIGNED NOT NULL,
-			createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-	`)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
