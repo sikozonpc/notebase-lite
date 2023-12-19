@@ -1,0 +1,11 @@
+export ENV="development"
+
+export PORT="3000"
+
+export JWT_SECRET="mysuperbigsecret"
+
+export DB_HOST="127.0.0.1"
+export DB_PORT="3306"
+export DB_USER="root"
+export DB_PASSWORD="mypassword"
+export DB_NAME="highlights"

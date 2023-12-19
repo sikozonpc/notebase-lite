@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"reflect"
 
 	"github.com/gorilla/mux"
 	"github.com/sikozonpc/notebase/data"
@@ -23,12 +25,26 @@ type APIError struct {
 }
 
 func (s *APIServer) Run() error {
-	router := mux.NewRouter()
+	router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 
-	router.HandleFunc("/highlight", makeHTTPHandler(s.handleHighlights))
-	router.HandleFunc("/highlight/{id}", makeHTTPHandler(s.handleHighlightsById))
+	router.HandleFunc("/register", makeHTTPHandler(s.handleRegister))
+	router.HandleFunc("/login", makeHTTPHandler(s.handleLogin))
+
+	router.HandleFunc("/highlight", withJWTAuth(makeHTTPHandler(s.handleHighlights)))
+	router.HandleFunc("/highlight/{id}", withJWTAuth(makeHTTPHandler(s.handleHighlightsById)))
 
 	log.Println("Listening on", s.addr)
+
+	log.Println("Process PID", os.Getpid())
+
+	env := Configs.Env
+	if env == "development" {
+		v := reflect.ValueOf(Configs)
+
+		for i := 0; i < v.NumField(); i++ {
+			log.Println(v.Type().Field(i).Name, "=", v.Field(i).Interface())
+		}
+	}
 
 	return http.ListenAndServe(s.addr, router)
 }
@@ -100,12 +116,12 @@ func (s *APIServer) handleGetHighlight(w http.ResponseWriter, r *http.Request) e
 }
 
 func (s *APIServer) handleCreateHighlight(w http.ResponseWriter, r *http.Request) error {
-	req := new(t.CreateHighlightRequest)
-	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+	payload := new(t.CreateHighlightRequest)
+	if err := json.NewDecoder(r.Body).Decode(payload); err != nil {
 		return err
 	}
 
-	highlight := data.NewHighlight(req.Text, req.Location, req.Note, req.UserId, req.BookId)
+	highlight := data.NewHighlight(payload.Text, payload.Location, payload.Note, payload.UserId, payload.BookId)
 
 	if err := s.store.CreateHighlight(*highlight); err != nil {
 		return err
@@ -113,4 +129,74 @@ func (s *APIServer) handleCreateHighlight(w http.ResponseWriter, r *http.Request
 
 	return WriteJSON(w, http.StatusOK, highlight)
 
+}
+
+func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != http.MethodPost {
+		return fmt.Errorf("method %s not allowed", r.Method)
+	}
+
+	payload := new(t.LoginRequest)
+	if err := json.NewDecoder(r.Body).Decode(payload); err != nil {
+		return err
+	}
+
+	user, err := s.store.GetUserByEmail(payload.Email)
+	if err != nil {
+		return err
+	}
+
+	if data.ComparePasswords(user.Password, []byte(payload.Password)) {
+		return fmt.Errorf("invalid password or user does not exist")
+	}
+
+	token, err := createAndSetAuthCookie(user.ID, w)
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, token)
+}
+
+func (s *APIServer) handleRegister(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != http.MethodPost {
+		return fmt.Errorf("method %s not allowed", r.Method)
+	}
+
+	payload := new(t.RegisterRequest)
+	if err := json.NewDecoder(r.Body).Decode(payload); err != nil {
+		return err
+	}
+
+	hashedPassword, err := data.HashPassword(payload.Password)
+	if err != nil {
+		return err
+	}
+
+	user := data.NewUser(payload.FirstName, payload.LastName, payload.Email, hashedPassword)
+
+	if err := s.store.CreateUser(*user); err != nil {
+		return err
+	}
+
+	token, err := createAndSetAuthCookie(user.ID, w)
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, token)
+}
+
+func createAndSetAuthCookie(userID int, w http.ResponseWriter) (string, error) {
+	token, err := createJWT(userID)
+	if err != nil {
+		return "", err
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:  "Authorization",
+		Value: token,
+	})
+
+	return token, nil
 }

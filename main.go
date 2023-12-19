@@ -8,13 +8,13 @@ import (
 
 func main() {
 	cfg := mysql.Config{
-		User:   "root",
-		Passwd: "mypassword",
-		Net:    "tcp",
-		Addr:   "127.0.0.1:3306",
+		User:                 Configs.DBUser,
+		Passwd:               Configs.DBPassword,
+		Net:                  "tcp",
+		Addr:                 Configs.DBAddress,
+		DBName:               Configs.DBName,
 		AllowNativePasswords: true,
-		DBName: "highlights",
-		ParseTime: true,
+		ParseTime:            true,
 	}
 
 	store, err := NewMySQLStorage(cfg)

@@ -11,6 +11,9 @@ type Storage interface {
 	GetHighlightByID(id int) (*t.Highlight, error)
 	CreateHighlight(t.Highlight) error
 	DeleteHighlight(id int) error
+
+	CreateUser(t.User) error
+	GetUserByEmail(email string) (*t.User, error)
 }
 
 type MySQLStorage struct {
@@ -69,4 +72,30 @@ func (s *MySQLStorage) DeleteHighlight(id int) error {
 	}
 
 	return nil
+}
+
+func (s *MySQLStorage) CreateUser(user t.User) error {
+	_, err := s.db.Exec("INSERT INTO users (firstName, lastName, email, password) VALUES (?, ?, ?, ?)", user.FirstName, user.LastName, user.Email, user.Password)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *MySQLStorage) GetUserByEmail(email string) (*t.User, error) {
+	rows, err := s.db.Query("SELECT * FROM users WHERE email = ?", email)
+	if err != nil {
+		return nil, err
+	}
+
+	u := new(t.User)
+	for rows.Next() {
+		u, err = scanRowsIntoUser(rows)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return u, nil
 }

@@ -26,7 +26,12 @@ func NewMySQLStorage(cfg mysql.Config) (*MySQLStorage, error) {
 }
 
 func (s *MySQLStorage) Init() error {
+	// Initialize tables
 	err := s.createHighlightsTable()
+	if err != nil {
+		return err
+	}
+	err = s.createUsersTable()
 	if err != nil {
 		return err
 	}
@@ -55,6 +60,27 @@ func (s *MySQLStorage) createHighlightsTable() error {
 	return nil
 }
 
+func (s *MySQLStorage) createUsersTable() error {
+	_, err := s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+			firstName VARCHAR(255) NOT NULL,
+			lastName VARCHAR(255) NOT NULL,
+			email VARCHAR(500) NOT NULL,
+			password VARCHAR(255) NOT NULL,
+			createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY (email),
+			INDEX (email)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
 
 func scanRowsIntoHighlight(rows *sql.Rows) (*t.Highlight, error) {
 	highlight := new(t.Highlight)
@@ -75,4 +101,23 @@ func scanRowsIntoHighlight(rows *sql.Rows) (*t.Highlight, error) {
 	}
 
 	return highlight, nil
+}
+
+func scanRowsIntoUser(rows *sql.Rows) (*t.User, error) {
+	user := new(t.User)
+
+	err := rows.Scan(
+		&user.ID,
+		&user.FirstName,
+		&user.LastName,
+		&user.Email,
+		&user.Password,
+		&user.CreatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
