@@ -2,6 +2,20 @@ package types
 
 import "time"
 
+type Config struct {
+	Env        string
+	Port       string
+	DBUser     string
+	DBPassword string
+	DBAddress  string
+	DBName     string
+	JWTSecret  string
+}
+
+type APIError struct {
+	Error string `json:"error"`
+}
+
 type Highlight struct {
 	ID        int       `json:"id"`
 	Text      string    `json:"text"`

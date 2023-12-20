@@ -3,22 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+
+	t "github.com/sikozonpc/notebase/types"
 )
 
 var Configs = initConfig()
 
-type Config struct {
-	Env        string
-	Port       string
-	DBUser     string
-	DBPassword string
-	DBAddress  string
-	DBName     string
-	JWTSecret  string
-}
-
-func initConfig() Config {
-	return Config{
+func initConfig() t.Config {
+	return t.Config{
 		Env:        getEnv("ENV", "development"),
 		Port:       getEnv("PORT", "8080"),
 		DBUser:     getEnv("DB_USER", "root"),

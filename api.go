@@ -9,8 +9,10 @@ import (
 	"reflect"
 
 	"github.com/gorilla/mux"
+	"github.com/sikozonpc/notebase/auth"
 	"github.com/sikozonpc/notebase/data"
 	t "github.com/sikozonpc/notebase/types"
+	u "github.com/sikozonpc/notebase/utils"
 )
 
 type APIServer struct {
@@ -20,18 +22,14 @@ type APIServer struct {
 
 type EndpointHandler func(w http.ResponseWriter, r *http.Request) error
 
-type APIError struct {
-	Error string `json:"error"`
-}
-
 func (s *APIServer) Run() error {
 	router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 
 	router.HandleFunc("/register", makeHTTPHandler(s.handleRegister))
 	router.HandleFunc("/login", makeHTTPHandler(s.handleLogin))
 
-	router.HandleFunc("/highlight", withJWTAuth(makeHTTPHandler(s.handleHighlights)))
-	router.HandleFunc("/highlight/{id}", withJWTAuth(makeHTTPHandler(s.handleHighlightsById)))
+	router.HandleFunc("/highlight", auth.WithJWTAuth(makeHTTPHandler(s.handleHighlights)))
+	router.HandleFunc("/highlight/{id}", auth.WithJWTAuth(makeHTTPHandler(s.handleHighlightsById)))
 
 	log.Println("Listening on", s.addr)
 
@@ -79,7 +77,7 @@ func (s *APIServer) handleGetHighlights(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, highlights)
+	return u.WriteJSON(w, http.StatusOK, highlights)
 }
 
 func (s *APIServer) handleDeleteHighlight(w http.ResponseWriter, r *http.Request) error {
@@ -93,7 +91,7 @@ func (s *APIServer) handleDeleteHighlight(w http.ResponseWriter, r *http.Request
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, nil)
+	return u.WriteJSON(w, http.StatusOK, nil)
 }
 
 func (s *APIServer) handleGetHighlight(w http.ResponseWriter, r *http.Request) error {
@@ -108,10 +106,10 @@ func (s *APIServer) handleGetHighlight(w http.ResponseWriter, r *http.Request) e
 	}
 
 	if h.ID == 0 {
-		return WriteJSON(w, http.StatusNotFound, APIError{Error: fmt.Errorf("highlight with id %d not found", id).Error()})
+		return u.WriteJSON(w, http.StatusNotFound, t.APIError{Error: fmt.Errorf("highlight with id %d not found", id).Error()})
 	}
 
-	return WriteJSON(w, http.StatusOK, h)
+	return u.WriteJSON(w, http.StatusOK, h)
 
 }
 
@@ -127,7 +125,7 @@ func (s *APIServer) handleCreateHighlight(w http.ResponseWriter, r *http.Request
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, highlight)
+	return u.WriteJSON(w, http.StatusOK, highlight)
 
 }
 
@@ -155,7 +153,7 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, token)
+	return u.WriteJSON(w, http.StatusOK, token)
 }
 
 func (s *APIServer) handleRegister(w http.ResponseWriter, r *http.Request) error {
@@ -184,11 +182,12 @@ func (s *APIServer) handleRegister(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, token)
+	return u.WriteJSON(w, http.StatusOK, token)
 }
 
 func createAndSetAuthCookie(userID int, w http.ResponseWriter) (string, error) {
-	token, err := createJWT(userID)
+	secret := []byte(Configs.JWTSecret)
+	token, err := auth.CreateJWT(secret, userID)
 	if err != nil {
 		return "", err
 	}
