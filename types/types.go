@@ -1,6 +1,11 @@
 package types
 
-import "time"
+import (
+	"net/http"
+	"time"
+)
+
+type EndpointHandler func(w http.ResponseWriter, r *http.Request) error
 
 type Config struct {
 	Env        string
@@ -32,7 +37,7 @@ type User struct {
 	FirstName string    `json:"firstName"`
 	LastName  string    `json:"lastName"`
 	Email     string    `json:"email"`
-	Password  string    `json:"password"`
+	Password  string    `json:"-"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -54,4 +59,19 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+// UserStore is an interface that represents operations for storing and retrieving users.
+type UserStore interface {
+	CreateUser(User) error
+	GetUserByEmail(email string) (*User, error)
+	GetUserByID(id string) (*User, error)
+}
+
+// HighlightStore is an interface that represents operations for storing and retrieving highlights.
+type HighlightStore interface {
+	GetUserHighlights(id int) ([]*Highlight, error)
+	GetHighlightByID(id int) (*Highlight, error)
+	CreateHighlight(Highlight) error
+	DeleteHighlight(id int) error
 }

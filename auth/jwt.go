@@ -12,26 +12,35 @@ import (
 	u "github.com/sikozonpc/notebase/utils"
 )
 
-func WithJWTAuth(handlerFunc http.HandlerFunc) http.HandlerFunc {
+func permissionDenied(w http.ResponseWriter) {
+	u.WriteJSON(w, http.StatusUnauthorized, t.APIError{
+		Error: fmt.Errorf("permission denied").Error(),
+	})
+}
+
+func WithJWTAuth(handlerFunc http.HandlerFunc, store t.UserStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
 
 		token, err := validateJWT(tokenString)
 		if err != nil {
-			u.WriteJSON(w, http.StatusUnauthorized, t.APIError{
-				Error: fmt.Errorf("invalid token").Error(),
-			})
+			permissionDenied(w)
 			return
 		}
 
 		if !token.Valid {
-			u.WriteJSON(w, http.StatusUnauthorized, t.APIError{
-				Error: fmt.Errorf("invalid token").Error(),
-			})
+			permissionDenied(w)
 			return
 		}
 
-		fmt.Println(token)
+		claims := token.Claims.(jwt.MapClaims)
+		claimsUserID := claims["userID"].(string)
+
+		_, err = store.GetUserByID(claimsUserID)
+		if err != nil {
+			permissionDenied(w)
+			return
+		}
 
 		// Call the function if the token is valid
 		handlerFunc(w, r)

@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	t "github.com/sikozonpc/notebase/types"
 )
 
-var Configs = initConfig()
+var Envs = initConfig()
 
 func initConfig() t.Config {
 	return t.Config{

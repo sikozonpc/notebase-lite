@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"database/sql"
@@ -6,8 +6,11 @@ import (
 	"log"
 
 	"github.com/go-sql-driver/mysql"
-	t "github.com/sikozonpc/notebase/types"
 )
+
+type MySQLStorage struct {
+	db *sql.DB
+}
 
 func NewMySQLStorage(cfg mysql.Config) (*MySQLStorage, error) {
 	var err error
@@ -20,23 +23,24 @@ func NewMySQLStorage(cfg mysql.Config) (*MySQLStorage, error) {
 	if pingErr != nil {
 		log.Fatal(pingErr)
 	}
+	
 	fmt.Println("Connected!")
 
 	return &MySQLStorage{db: db}, nil
 }
 
-func (s *MySQLStorage) Init() error {
+func (s *MySQLStorage) Init() (*sql.DB, error) {
 	// Initialize tables
 	err := s.createHighlightsTable()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = s.createUsersTable()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return s.db, nil
 }
 
 func (s *MySQLStorage) createHighlightsTable() error {
@@ -79,45 +83,6 @@ func (s *MySQLStorage) createUsersTable() error {
 	}
 
 	return nil
-
 }
 
-func scanRowsIntoHighlight(rows *sql.Rows) (*t.Highlight, error) {
-	highlight := new(t.Highlight)
 
-	err := rows.Scan(
-		&highlight.ID,
-		&highlight.Text,
-		&highlight.Location,
-		&highlight.Note,
-		&highlight.UserId,
-		&highlight.BookId,
-		&highlight.CreatedAt,
-		&highlight.UpdatedAt,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return highlight, nil
-}
-
-func scanRowsIntoUser(rows *sql.Rows) (*t.User, error) {
-	user := new(t.User)
-
-	err := rows.Scan(
-		&user.ID,
-		&user.FirstName,
-		&user.LastName,
-		&user.Email,
-		&user.Password,
-		&user.CreatedAt,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
-}

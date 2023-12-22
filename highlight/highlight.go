@@ -1,4 +1,4 @@
-package data
+package highlight
 
 import (
 	"time"
@@ -6,8 +6,7 @@ import (
 	t "github.com/sikozonpc/notebase/types"
 )
 
-
-func NewHighlight(text, location, note string, userId, bookId int) *t.Highlight {
+func New(text, location, note string, userId, bookId int) *t.Highlight {
 	return &t.Highlight{
 		Text:     text,
 		Location: location,
