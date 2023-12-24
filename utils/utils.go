@@ -27,11 +27,11 @@ func MakeHTTPHandler(fn t.EndpointHandler) http.HandlerFunc {
 	}
 }
 
-func GetIdFromRequest(r *http.Request) (int, error) {
+func GetParamFromRequest(r *http.Request, param string) (int, error) {
 	vars := mux.Vars(r)
-	id, ok := vars["id"]
+	id, ok := vars[param]
 	if !ok {
-		return 0, fmt.Errorf("no id in request")
+		return 0, fmt.Errorf("no param: %v in request", param)
 	}
 
 	return strconv.Atoi(id)

@@ -24,29 +24,34 @@ func NewHandler(store t.HighlightStore, userStore t.UserStore) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/user/{id}/highlight", auth.WithJWTAuth(u.MakeHTTPHandler(h.handleUserHighlights), h.userStore))
-	router.HandleFunc("/highlight/{id}", auth.WithJWTAuth(u.MakeHTTPHandler(h.handleHighlightsById), h.userStore))
-}
+	router.HandleFunc(
+		"/user/{userID}/highlight",
+		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleGetUserHighlights), h.userStore),
+	).Methods("GET")
 
-func (s *Handler) handleUserHighlights(w http.ResponseWriter, r *http.Request) error {
-	if r.Method == http.MethodGet {
-		return s.handleGetUserHighlights(w, r)
-	}
+	router.HandleFunc(
+		"/user/{userID}/highlight",
+		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleCreateHighlight), h.userStore),
+	).Methods("POST")
 
-	if r.Method == http.MethodPost {
-		return s.handleCreateHighlight(w, r)
-	}
+	router.HandleFunc(
+		"/user/{userID}/highlight/{id}",
+		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleGetHighlight), h.userStore),
+	).Methods("GET")
 
-	return fmt.Errorf("method %s not allowed", r.Method)
+	router.HandleFunc(
+		"/user/{userID}/highlight/{id}",
+		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleDeleteHighlight), h.userStore),
+	).Methods("DELETE")
 }
 
 func (s *Handler) handleGetUserHighlights(w http.ResponseWriter, r *http.Request) error {
-	id, err := u.GetIdFromRequest(r)
+	userID, err := u.GetParamFromRequest(r, "userID")
 	if err != nil {
 		return err
 	}
 
-	hs, err := s.store.GetUserHighlights(id)
+	hs, err := s.store.GetUserHighlights(userID)
 	if err != nil {
 		return err
 	}
@@ -54,20 +59,8 @@ func (s *Handler) handleGetUserHighlights(w http.ResponseWriter, r *http.Request
 	return u.WriteJSON(w, http.StatusOK, hs)
 }
 
-func (s *Handler) handleHighlightsById(w http.ResponseWriter, r *http.Request) error {
-	if r.Method == http.MethodGet {
-		return s.handleGetHighlight(w, r)
-	}
-
-	if r.Method == http.MethodDelete {
-		return s.handleDeleteHighlight(w, r)
-	}
-
-	return fmt.Errorf("method %s not allowed", r.Method)
-}
-
 func (s *Handler) handleDeleteHighlight(w http.ResponseWriter, r *http.Request) error {
-	id, err := u.GetIdFromRequest(r)
+	id, err := u.GetParamFromRequest(r, "id")
 	if err != nil {
 		return err
 	}
@@ -81,12 +74,17 @@ func (s *Handler) handleDeleteHighlight(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Handler) handleGetHighlight(w http.ResponseWriter, r *http.Request) error {
-	id, err := u.GetIdFromRequest(r)
+	id, err := u.GetParamFromRequest(r, "id")
 	if err != nil {
 		return err
 	}
 
-	h, err := s.store.GetHighlightByID(id)
+	userID, err := u.GetParamFromRequest(r, "userID")
+	if err != nil {
+		return err
+	}
+
+	h, err := s.store.GetHighlightByID(id, userID)
 	if err != nil {
 		return err
 	}
@@ -100,7 +98,7 @@ func (s *Handler) handleGetHighlight(w http.ResponseWriter, r *http.Request) err
 }
 
 func (s *Handler) handleCreateHighlight(w http.ResponseWriter, r *http.Request) error {
-	payload := new(t.CreateHighlightRequest)
+	payload := new(CreateHighlightRequest)
 	if err := json.NewDecoder(r.Body).Decode(payload); err != nil {
 		return err
 	}
@@ -113,4 +111,12 @@ func (s *Handler) handleCreateHighlight(w http.ResponseWriter, r *http.Request) 
 
 	return u.WriteJSON(w, http.StatusOK, highlight)
 
+}
+
+type CreateHighlightRequest struct {
+	Text     string `json:"text"`
+	Location string `json:"location"`
+	Note     string `json:"note"`
+	UserId   int    `json:"userId"`
+	BookId   int    `json:"bookId"`
 }

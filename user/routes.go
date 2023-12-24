@@ -21,9 +21,19 @@ func NewHandler(store t.UserStore) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/users/{id}", u.MakeHTTPHandler(h.handleGetUser)).Methods("GET")
-	router.HandleFunc("/login", u.MakeHTTPHandler(h.handleLogin)).Methods("POST")
-	router.HandleFunc("/register", u.MakeHTTPHandler(h.handleRegister)).Methods("POST")
+	router.HandleFunc(
+		"/users/{userID}",
+		u.MakeHTTPHandler(h.handleGetUser),
+	).Methods("GET")
+
+	router.HandleFunc(
+		"/login",
+		u.MakeHTTPHandler(h.handleLogin),
+	).Methods("POST")
+	router.HandleFunc(
+		"/register",
+		u.MakeHTTPHandler(h.handleRegister),
+	).Methods("POST")
 }
 
 func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) error {
@@ -31,10 +41,12 @@ func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("method %s not allowed", r.Method)
 	}
 
-	vars := mux.Vars(r)
-	id := vars["id"]
+	userID, err := u.GetParamFromRequest(r, "userID")
+	if err != nil {
+		return err
+	}
 
-	user, err := h.store.GetUserByID(id)
+	user, err := h.store.GetUserByID(userID)
 	if err != nil {
 		return err
 	}
@@ -47,7 +59,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("method %s not allowed", r.Method)
 	}
 
-	payload := new(t.LoginRequest)
+	payload := new(LoginRequest)
 	if err := json.NewDecoder(r.Body).Decode(payload); err != nil {
 		return err
 	}
@@ -74,7 +86,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("method %s not allowed", r.Method)
 	}
 
-	payload := new(t.RegisterRequest)
+	payload := new(RegisterRequest)
 	if err := json.NewDecoder(r.Body).Decode(payload); err != nil {
 		return err
 	}
@@ -110,4 +122,16 @@ func createAndSetAuthCookie(userID int, w http.ResponseWriter) (string, error) {
 	})
 
 	return token, nil
+}
+
+type RegisterRequest struct {
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }

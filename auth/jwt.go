@@ -34,7 +34,7 @@ func WithJWTAuth(handlerFunc http.HandlerFunc, store t.UserStore) http.HandlerFu
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
-		claimsUserID := claims["userID"].(string)
+		claimsUserID := claims["userID"].(int)
 
 		_, err = store.GetUserByID(claimsUserID)
 		if err != nil {

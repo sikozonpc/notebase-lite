@@ -41,37 +41,15 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type CreateHighlightRequest struct {
-	Text     string `json:"text"`
-	Location string `json:"location"`
-	Note     string `json:"note"`
-	UserId   int    `json:"userId"`
-	BookId   int    `json:"bookId"`
-}
-
-type RegisterRequest struct {
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-}
-
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-// UserStore is an interface that represents operations for storing and retrieving users.
 type UserStore interface {
 	CreateUser(User) error
 	GetUserByEmail(email string) (*User, error)
-	GetUserByID(id string) (*User, error)
+	GetUserByID(id int) (*User, error)
 }
 
-// HighlightStore is an interface that represents operations for storing and retrieving highlights.
 type HighlightStore interface {
-	GetUserHighlights(id int) ([]*Highlight, error)
-	GetHighlightByID(id int) (*Highlight, error)
+	GetUserHighlights(userID int) ([]*Highlight, error)
+	GetHighlightByID(id, userID int) (*Highlight, error)
 	CreateHighlight(Highlight) error
 	DeleteHighlight(id int) error
 }

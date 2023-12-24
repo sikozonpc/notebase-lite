@@ -40,7 +40,7 @@ func (s *Store) GetUserByEmail(email string) (*t.User, error) {
 	return u, nil
 }
 
-func (s *Store) GetUserByID(id string) (*t.User, error) {
+func (s *Store) GetUserByID(id int) (*t.User, error) {
 	rows, err := s.db.Query("SELECT * FROM users WHERE id = ?", id)
 	if err != nil {
 		return nil, err

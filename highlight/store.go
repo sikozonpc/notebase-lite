@@ -14,8 +14,8 @@ func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
-func (s *Store) GetUserHighlights(id int) ([]*t.Highlight, error) {
-	rows, err := s.db.Query("SELECT * FROM highlights WHERE userId = ?", id)
+func (s *Store) GetUserHighlights(userID int) ([]*t.Highlight, error) {
+	rows, err := s.db.Query("SELECT * FROM highlights WHERE userId = ?", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +42,8 @@ func (s *Store) CreateHighlight(highlight t.Highlight) error {
 	return nil
 }
 
-func (s *Store) GetHighlightByID(id int) (*t.Highlight, error) {
-	rows, err := s.db.Query("SELECT * FROM highlights WHERE id = ?", id)
+func (s *Store) GetHighlightByID(id, userID int) (*t.Highlight, error) {
+	rows, err := s.db.Query("SELECT * FROM highlights WHERE id = ? AND userId = ?", id, userID)
 	if err != nil {
 		return nil, err
 	}
