@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sikozonpc/notebase/config"
 	"github.com/sikozonpc/notebase/highlight"
+	"github.com/sikozonpc/notebase/storage"
 	"github.com/sikozonpc/notebase/user"
 )
 
@@ -28,12 +30,19 @@ func NewAPIServer(addr string, db *sql.DB) *APIServer {
 func (s *APIServer) Run() error {
 	router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 
+	ctx := context.Background()
+
+	gcpStorage, err := storage.NewGCPStorage(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	userStore := user.NewStore(s.db)
 	userHandler := user.NewHandler(userStore)
 	userHandler.RegisterRoutes(router)
 
 	highlightStore := highlight.NewStore(s.db)
-	highlightHandler := highlight.NewHandler(highlightStore, userStore)
+	highlightHandler := highlight.NewHandler(highlightStore, userStore, gcpStorage)
 	highlightHandler.RegisterRoutes(router)
 
 	log.Println("Listening on", s.addr)

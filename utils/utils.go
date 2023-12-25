@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -31,6 +32,7 @@ func GetParamFromRequest(r *http.Request, param string) (int, error) {
 	vars := mux.Vars(r)
 	id, ok := vars[param]
 	if !ok {
+		log.Printf("no param: %v in request", param)
 		return 0, fmt.Errorf("no param: %v in request", param)
 	}
 

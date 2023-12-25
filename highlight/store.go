@@ -34,7 +34,7 @@ func (s *Store) GetUserHighlights(userID int) ([]*t.Highlight, error) {
 }
 
 func (s *Store) CreateHighlight(highlight t.Highlight) error {
-	_, err := s.db.Exec("INSERT INTO highlights (text, location, note, userId, bookId) VALUES (?, ?, ?, ?, ?)", highlight.Text, highlight.Location, highlight.Note, highlight.UserId, highlight.BookId)
+	_, err := s.db.Exec("INSERT INTO highlights (text, location, note, userId, bookId) VALUES (?, ?, ?, ?, ?)", highlight.Text, highlight.Location, highlight.Note, highlight.UserID, highlight.BookID)
 	if err != nil {
 		return err
 	}
@@ -76,8 +76,8 @@ func scanRowsIntoHighlight(rows *sql.Rows) (*t.Highlight, error) {
 		&highlight.Text,
 		&highlight.Location,
 		&highlight.Note,
-		&highlight.UserId,
-		&highlight.BookId,
+		&highlight.UserID,
+		&highlight.BookID,
 		&highlight.CreatedAt,
 		&highlight.UpdatedAt,
 	)

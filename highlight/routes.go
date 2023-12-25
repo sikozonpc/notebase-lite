@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sikozonpc/notebase/auth"
+	"github.com/sikozonpc/notebase/storage"
 	t "github.com/sikozonpc/notebase/types"
 	u "github.com/sikozonpc/notebase/utils"
 )
@@ -14,12 +15,14 @@ import (
 type Handler struct {
 	store     t.HighlightStore
 	userStore t.UserStore
+	storage   storage.Storage
 }
 
-func NewHandler(store t.HighlightStore, userStore t.UserStore) *Handler {
+func NewHandler(store t.HighlightStore, userStore t.UserStore, storage storage.Storage) *Handler {
 	return &Handler{
 		store:     store,
 		userStore: userStore,
+		storage:   storage,
 	}
 }
 
@@ -36,13 +39,45 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	router.HandleFunc(
 		"/user/{userID}/highlight/{id}",
-		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleGetHighlight), h.userStore),
+		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleGetHighlightByID), h.userStore),
 	).Methods("GET")
 
 	router.HandleFunc(
 		"/user/{userID}/highlight/{id}",
 		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleDeleteHighlight), h.userStore),
 	).Methods("DELETE")
+
+	router.HandleFunc(
+		"/user/{userID}/parse-kindle-extract",
+		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleParseKindleFile), h.userStore),
+	).
+		Methods("POST")
+}
+
+func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) error {
+	userID, err := u.GetParamFromRequest(r, "userID")
+	if err != nil {
+		return err
+	}
+
+	query := r.URL.Query()
+	filename := query.Get("filename")
+
+	if filename == "" {
+		return u.WriteJSON(w, http.StatusBadRequest, fmt.Errorf("filename is required"))
+	}
+
+	file, err := s.storage.Read(filename)
+	if err != nil {
+		return u.WriteJSON(w, http.StatusInternalServerError, err)
+	}
+
+	hs, err := parseKindleExtractFile(file, userID)
+	if err != nil {
+		return err
+	}
+
+	return u.WriteJSON(w, http.StatusOK, hs)
 }
 
 func (s *Handler) handleGetUserHighlights(w http.ResponseWriter, r *http.Request) error {
@@ -73,13 +108,13 @@ func (s *Handler) handleDeleteHighlight(w http.ResponseWriter, r *http.Request) 
 	return u.WriteJSON(w, http.StatusOK, nil)
 }
 
-func (s *Handler) handleGetHighlight(w http.ResponseWriter, r *http.Request) error {
-	id, err := u.GetParamFromRequest(r, "id")
+func (s *Handler) handleGetHighlightByID(w http.ResponseWriter, r *http.Request) error {
+	userID, err := u.GetParamFromRequest(r, "userID")
 	if err != nil {
 		return err
 	}
 
-	userID, err := u.GetParamFromRequest(r, "userID")
+	id, err := u.GetParamFromRequest(r, "id")
 	if err != nil {
 		return err
 	}
@@ -89,7 +124,7 @@ func (s *Handler) handleGetHighlight(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
-	if h.ID == 0 {
+	if h == nil {
 		return u.WriteJSON(w, http.StatusNotFound, t.APIError{Error: fmt.Errorf("highlight with id %d not found", id).Error()})
 	}
 

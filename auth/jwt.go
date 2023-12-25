@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -34,9 +35,16 @@ func WithJWTAuth(handlerFunc http.HandlerFunc, store t.UserStore) http.HandlerFu
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
-		claimsUserID := claims["userID"].(int)
+		claimsUserID := claims["userID"].(string)
 
-		_, err = store.GetUserByID(claimsUserID)
+		userID, err := strconv.Atoi(claimsUserID)
+		if err != nil {
+			log.Println("failed to convert userID to int")
+			permissionDenied(w)
+			return
+		}
+
+		_, err = store.GetUserByID(userID)
 		if err != nil {
 			permissionDenied(w)
 			return

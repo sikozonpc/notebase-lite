@@ -8,13 +8,15 @@ import (
 type EndpointHandler func(w http.ResponseWriter, r *http.Request) error
 
 type Config struct {
-	Env        string
-	Port       string
-	DBUser     string
-	DBPassword string
-	DBAddress  string
-	DBName     string
-	JWTSecret  string
+	Env                string
+	Port               string
+	DBUser             string
+	DBPassword         string
+	DBAddress          string
+	DBName             string
+	JWTSecret          string
+	GCPID              string
+	GCPBooksBucketName string
 }
 
 type APIError struct {
@@ -26,8 +28,8 @@ type Highlight struct {
 	Text      string    `json:"text"`
 	Location  string    `json:"location"`
 	Note      string    `json:"note"`
-	UserId    int       `json:"userId"`
-	BookId    int       `json:"bookId"`
+	UserID    int       `json:"userId"`
+	BookID    int       `json:"bookId"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
