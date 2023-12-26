@@ -17,10 +17,11 @@ var fakeHighlight *types.Highlight
 
 func TestHandleUserHighlights(t *testing.T) {
 	memStore := storage.NewMemoryStorage()
+	bookStore := &mockBookStore{}
 
 	store := &mockHighlightStore{}
 	userStore := &mockUserStore{}
-	handler := NewHandler(store, userStore, memStore)
+	handler := NewHandler(store, userStore, memStore, bookStore)
 
 	t.Run("should handle get user highlights", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/user/1/highlight", nil)
@@ -66,7 +67,7 @@ func TestHandleUserHighlights(t *testing.T) {
 			Text:     "test",
 			Location: "test",
 			Note:     "test",
-			BookID:   1,
+			BookID:   "B004XCFJ3E",
 			UserID:   1,
 		}
 
@@ -92,7 +93,7 @@ func TestHandleUserHighlights(t *testing.T) {
 			Text:     "test",
 			Location: "test",
 			Note:     "test",
-			BookId:   1,
+			BookId:   "B004XCFJ3E",
 		}
 
 		marshalled, err := json.Marshal(payload)
@@ -208,6 +209,10 @@ func (m *mockHighlightStore) DeleteHighlight(id int) error {
 	return nil
 }
 
+func (m *mockHighlightStore) CreateHighlights(highlights []types.Highlight) error {
+	return nil
+}
+
 type mockUserStore struct{}
 
 func (m *mockUserStore) GetUserByEmail(email string) (*types.User, error) {
@@ -222,3 +227,12 @@ func (m *mockUserStore) GetUserByID(id int) (*types.User, error) {
 	return &types.User{}, nil
 }
 
+type mockBookStore struct{}
+
+func (m *mockBookStore) GetBookByISBN(ISBN string) (*types.Book, error) {
+	return &types.Book{}, nil
+}
+
+func (m *mockBookStore) CreateBook(book types.Book) error {
+	return nil
+}

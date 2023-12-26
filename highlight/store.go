@@ -2,6 +2,7 @@ package highlight
 
 import (
 	"database/sql"
+	"log"
 
 	t "github.com/sikozonpc/notebase/types"
 )
@@ -36,6 +37,40 @@ func (s *Store) GetUserHighlights(userID int) ([]*t.Highlight, error) {
 func (s *Store) CreateHighlight(highlight t.Highlight) error {
 	_, err := s.db.Exec("INSERT INTO highlights (text, location, note, userId, bookId) VALUES (?, ?, ?, ?, ?)", highlight.Text, highlight.Location, highlight.Note, highlight.UserID, highlight.BookID)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Store) CreateHighlights(highlights []t.Highlight) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		log.Println("Error starting transaction: ", err)
+		return err
+	}
+
+	// Defer a rollback in case anything fails.
+	defer tx.Rollback()
+
+	// Create a slice to hold the values
+	values := []interface{}{}
+
+	query := "INSERT INTO highlights (text, location, note, userId, bookId) VALUES "
+	for _, h := range highlights {
+		query += "(?, ?, ?, ?, ?),"
+		values = append(values, h.Text, h.Location, h.Note, h.UserID, h.BookID)
+	}
+
+	// Remove the last comma
+	query = query[:len(query)-1]
+
+	_, err = tx.Exec(query, values...)
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
 		return err
 	}
 

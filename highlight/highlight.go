@@ -1,13 +1,14 @@
 package highlight
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 
 	t "github.com/sikozonpc/notebase/types"
 )
 
-func New(text, location, note string, userId, bookId int) *t.Highlight {
+func New(text, location, note, bookId string, userId int) *t.Highlight {
 	return &t.Highlight{
 		Text:      text,
 		Location:  location,
@@ -20,8 +21,15 @@ func New(text, location, note string, userId, bookId int) *t.Highlight {
 }
 
 // Fetches the file from the cloud storage in the KindleExtract format and reads it by creating a any new entities (books and highlights) if needed.
-func parseKindleExtractFile(file string, userId int) ([]*t.Highlight, error) {
-	log.Println("file: ", file)
+func parseKindleExtractFile(file string, userId int) (*t.RawExtractBook, error) {
+	raw := new(t.RawExtractBook)
+	f := []byte(file)
 
-	return nil, nil
+	err := json.Unmarshal(f, raw)
+	if err != nil {
+		log.Println("error unmarshalling file: ", err)
+		return nil, err
+	}
+
+	return raw, nil
 }

@@ -30,6 +30,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	defer db.Close()
+
 	server := NewAPIServer(fmt.Sprintf(":%s", config.Envs.Port), db)
 	if err := server.Run(); err != nil {
 		log.Fatal(err)

@@ -3,6 +3,7 @@ package highlight
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -16,13 +17,15 @@ type Handler struct {
 	store     t.HighlightStore
 	userStore t.UserStore
 	storage   storage.Storage
+	bookStore t.BookStore
 }
 
-func NewHandler(store t.HighlightStore, userStore t.UserStore, storage storage.Storage) *Handler {
+func NewHandler(store t.HighlightStore, userStore t.UserStore, storage storage.Storage, bookStore t.BookStore) *Handler {
 	return &Handler{
 		store:     store,
 		userStore: userStore,
 		storage:   storage,
+		bookStore: bookStore,
 	}
 }
 
@@ -72,12 +75,30 @@ func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) 
 		return u.WriteJSON(w, http.StatusInternalServerError, err)
 	}
 
-	hs, err := parseKindleExtractFile(file, userID)
+	raw, err := parseKindleExtractFile(file, userID)
 	if err != nil {
 		return err
 	}
 
-	return u.WriteJSON(w, http.StatusOK, hs)
+	// Create highlights
+	hs := make([]t.Highlight, len(raw.Highlights))
+	for i, h := range raw.Highlights {
+		hs[i] = t.Highlight{
+			Text:     h.Text,
+			Location: h.Location.URL,
+			Note:     h.Note,
+			UserID:   userID,
+			BookID:   raw.ASIN,
+		}
+	}
+
+	err = s.store.CreateHighlights(hs)
+	if err != nil {
+		log.Println("Error creating highlights: ", err)
+		return err
+	}
+
+	return u.WriteJSON(w, http.StatusOK, raw)
 }
 
 func (s *Handler) handleGetUserHighlights(w http.ResponseWriter, r *http.Request) error {
@@ -138,7 +159,7 @@ func (s *Handler) handleCreateHighlight(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	highlight := New(payload.Text, payload.Location, payload.Note, payload.UserId, payload.BookId)
+	highlight := New(payload.Text, payload.Location, payload.Note, payload.BookId, payload.UserId)
 
 	if err := s.store.CreateHighlight(*highlight); err != nil {
 		return err
@@ -153,5 +174,5 @@ type CreateHighlightRequest struct {
 	Location string `json:"location"`
 	Note     string `json:"note"`
 	UserId   int    `json:"userId"`
-	BookId   int    `json:"bookId"`
+	BookId   string `json:"bookId"`
 }

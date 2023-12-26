@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/gorilla/mux"
+	"github.com/sikozonpc/notebase/book"
 	"github.com/sikozonpc/notebase/config"
 	"github.com/sikozonpc/notebase/highlight"
 	"github.com/sikozonpc/notebase/storage"
@@ -37,12 +38,14 @@ func (s *APIServer) Run() error {
 		log.Fatal(err)
 	}
 
+	bookStore := book.NewStore(s.db)
+
 	userStore := user.NewStore(s.db)
 	userHandler := user.NewHandler(userStore)
 	userHandler.RegisterRoutes(router)
 
 	highlightStore := highlight.NewStore(s.db)
-	highlightHandler := highlight.NewHandler(highlightStore, userStore, gcpStorage)
+	highlightHandler := highlight.NewHandler(highlightStore, userStore, gcpStorage, bookStore)
 	highlightHandler.RegisterRoutes(router)
 
 	log.Println("Listening on", s.addr)

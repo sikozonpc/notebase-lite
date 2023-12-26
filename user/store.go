@@ -2,6 +2,7 @@ package user
 
 import (
 	"database/sql"
+	"fmt"
 
 	t "github.com/sikozonpc/notebase/types"
 )
@@ -52,6 +53,10 @@ func (s *Store) GetUserByID(id int) (*t.User, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if u.ID == 0 {
+		return nil, fmt.Errorf("user not found")
 	}
 
 	return u, nil
