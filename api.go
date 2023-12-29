@@ -12,6 +12,7 @@ import (
 	"github.com/sikozonpc/notebase/book"
 	"github.com/sikozonpc/notebase/config"
 	"github.com/sikozonpc/notebase/highlight"
+	"github.com/sikozonpc/notebase/medium"
 	"github.com/sikozonpc/notebase/storage"
 	"github.com/sikozonpc/notebase/user"
 )
@@ -38,6 +39,8 @@ func (s *APIServer) Run() error {
 		log.Fatal(err)
 	}
 
+	mailer := medium.NewMailer(config.Envs.SendGridAPIKey, config.Envs.SendGridFromEmail)
+
 	bookStore := book.NewStore(s.db)
 
 	userStore := user.NewStore(s.db)
@@ -45,7 +48,7 @@ func (s *APIServer) Run() error {
 	userHandler.RegisterRoutes(router)
 
 	highlightStore := highlight.NewStore(s.db)
-	highlightHandler := highlight.NewHandler(highlightStore, userStore, gcpStorage, bookStore)
+	highlightHandler := highlight.NewHandler(highlightStore, userStore, gcpStorage, bookStore, mailer)
 	highlightHandler.RegisterRoutes(router)
 
 	log.Println("Listening on", s.addr)

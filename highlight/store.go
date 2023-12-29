@@ -103,6 +103,25 @@ func (s *Store) DeleteHighlight(id int) error {
 	return nil
 }
 
+func (s *Store) GetRandomHighlights(userID int, limit int) ([]*t.Highlight, error) {
+	rows, err := s.db.Query("SELECT * FROM highlights WHERE userID = ? ORDER BY RAND() LIMIT ?", userID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var highlights []*t.Highlight
+	for rows.Next() {
+		h, err := scanRowsIntoHighlight(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		highlights = append(highlights, h)
+	}
+
+	return highlights, nil
+}
+
 func scanRowsIntoHighlight(rows *sql.Rows) (*t.Highlight, error) {
 	highlight := new(t.Highlight)
 

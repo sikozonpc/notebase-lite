@@ -20,6 +20,8 @@ func initConfig() t.Config {
 		JWTSecret:          getEnvOrPanic("JWT_SECRET", "JWT secret is required"),
 		GCPID:              getEnvOrPanic("GOOGLE_CLOUD_PROJECT_ID", "Google Cloud Project ID is required"),
 		GCPBooksBucketName: getEnvOrPanic("GOOGLE_CLOUD_BOOKS_BUCKET_NAME", "Google Cloud Books Bucket Name is required"),
+		SendGridAPIKey:     getEnvOrPanic("SENDGRID_API_KEY", "SendGrid API KEY is required"),
+		SendGridFromEmail:  getEnvOrPanic("SENDGRID_FROM_EMAIL", "SendGrid From email is required"),
 	}
 }
 

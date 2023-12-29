@@ -17,6 +17,8 @@ type Config struct {
 	JWTSecret          string
 	GCPID              string
 	GCPBooksBucketName string
+	SendGridAPIKey     string
+	SendGridFromEmail  string
 }
 
 type APIError struct {
@@ -40,13 +42,15 @@ type User struct {
 	LastName  string    `json:"lastName"`
 	Email     string    `json:"email"`
 	Password  string    `json:"-"`
+	IsActive  bool      `json:"isActive"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
 type Book struct {
-	ISBN    string `json:"isbn"`
-	Title   string `json:"title"`
-	Authors string `json:"authors"`
+	ISBN      string    `json:"isbn"`
+	Title     string    `json:"title"`
+	Authors   string    `json:"authors"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // This is the format of the file that is downloaded from web tool
@@ -69,20 +73,33 @@ type RawExtractHighlight struct {
 }
 
 type UserStore interface {
-	CreateUser(User) error
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(id int) (*User, error)
+	GetUsers() ([]*User, error)
+
+	CreateUser(User) error
 }
 
 type HighlightStore interface {
 	GetUserHighlights(userID int) ([]*Highlight, error)
 	GetHighlightByID(id, userID int) (*Highlight, error)
+	GetRandomHighlights(userID int, limit int) ([]*Highlight, error)
+
 	CreateHighlight(Highlight) error
 	CreateHighlights([]Highlight) error
+
 	DeleteHighlight(id int) error
 }
 
 type BookStore interface {
 	GetBookByISBN(isbn string) (*Book, error)
+
 	CreateBook(Book) error
+}
+
+type DailyInsight struct {
+	Text        string
+	Note        string
+	BookAuthors string
+	BookTitle   string
 }

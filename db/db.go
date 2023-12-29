@@ -80,6 +80,7 @@ func (s *MySQLStorage) createUsersTable() error {
 			lastName VARCHAR(255) NOT NULL,
 			email VARCHAR(500) NOT NULL,
 			password VARCHAR(255) NOT NULL,
+			isActive BOOLEAN NOT NULL DEFAULT TRUE,
 			createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
 			PRIMARY KEY (id),
@@ -113,4 +114,3 @@ func (s *MySQLStorage) createBookTable() error {
 
 	return nil
 }
-

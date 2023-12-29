@@ -18,10 +18,11 @@ var fakeHighlight *types.Highlight
 func TestHandleUserHighlights(t *testing.T) {
 	memStore := storage.NewMemoryStorage()
 	bookStore := &mockBookStore{}
+	mockMailer := &mockMailer{}
 
 	store := &mockHighlightStore{}
 	userStore := &mockUserStore{}
-	handler := NewHandler(store, userStore, memStore, bookStore)
+	handler := NewHandler(store, userStore, memStore, bookStore, mockMailer)
 
 	t.Run("should handle get user highlights", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/user/1/highlight", nil)
@@ -189,11 +190,33 @@ func TestHandleUserHighlights(t *testing.T) {
 			t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
 		}
 	})
+
+	t.Run("should handle send daily insights", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/user/1/daily-insights", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+
+		router.HandleFunc("/user/{userID}/daily-insights", u.MakeHTTPHandler(handler.handleSendDailyInsights))
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
+		}
+	})
 }
 
 type mockHighlightStore struct{}
 
 func (m *mockHighlightStore) GetUserHighlights(userID int) ([]*types.Highlight, error) {
+	return []*types.Highlight{}, nil
+}
+
+func (m *mockHighlightStore) GetRandomHighlights(userID int, limit int) ([]*types.Highlight, error) {
 	return []*types.Highlight{}, nil
 }
 
@@ -227,6 +250,10 @@ func (m *mockUserStore) GetUserByID(id int) (*types.User, error) {
 	return &types.User{}, nil
 }
 
+func (m *mockUserStore) GetUsers() ([]*types.User, error) {
+	return []*types.User{}, nil
+}
+
 type mockBookStore struct{}
 
 func (m *mockBookStore) GetBookByISBN(ISBN string) (*types.Book, error) {
@@ -234,5 +261,11 @@ func (m *mockBookStore) GetBookByISBN(ISBN string) (*types.Book, error) {
 }
 
 func (m *mockBookStore) CreateBook(book types.Book) error {
+	return nil
+}
+
+type mockMailer struct{}
+
+func (m *mockMailer) SendInsights(u *types.User, insights []*types.DailyInsight) error {
 	return nil
 }

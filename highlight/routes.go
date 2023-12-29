@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sikozonpc/notebase/auth"
+	"github.com/sikozonpc/notebase/medium"
 	"github.com/sikozonpc/notebase/storage"
 	t "github.com/sikozonpc/notebase/types"
 	u "github.com/sikozonpc/notebase/utils"
@@ -18,14 +19,22 @@ type Handler struct {
 	userStore t.UserStore
 	storage   storage.Storage
 	bookStore t.BookStore
+	mailer    medium.Medium
 }
 
-func NewHandler(store t.HighlightStore, userStore t.UserStore, storage storage.Storage, bookStore t.BookStore) *Handler {
+func NewHandler(
+	store t.HighlightStore,
+	userStore t.UserStore,
+	storage storage.Storage,
+	bookStore t.BookStore,
+	mailer medium.Medium,
+) *Handler {
 	return &Handler{
 		store:     store,
 		userStore: userStore,
 		storage:   storage,
 		bookStore: bookStore,
+		mailer:    mailer,
 	}
 }
 
@@ -55,6 +64,47 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleParseKindleFile), h.userStore),
 	).
 		Methods("POST")
+
+	router.HandleFunc(
+		"/daily-insights",
+		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleSendDailyInsights), h.userStore),
+	).
+		Methods("GET")
+}
+
+func (s *Handler) handleSendDailyInsights(w http.ResponseWriter, r *http.Request) error {
+	users, err := s.userStore.GetUsers()
+	if err != nil {
+		return err
+	}
+
+	for _, u := range users {
+		user, err := s.userStore.GetUserByID(u.ID)
+		if err != nil {
+			return fmt.Errorf("user with id %d not found", u.ID)
+		}
+
+		hs, err := s.store.GetRandomHighlights(u.ID, 3)
+		if err != nil {
+			return err
+		}
+
+		// Don't send daily insights if there are none
+		if len(hs) == 0 {
+			continue
+		}
+
+		insights, err := buildInsights(hs, s.bookStore)
+		if err != nil {
+			return err
+		}
+
+		if err = s.mailer.SendInsights(user, insights); err != nil {
+			return err
+		}
+	}
+
+	return u.WriteJSON(w, http.StatusOK, nil)
 }
 
 func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) error {
@@ -78,6 +128,16 @@ func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) 
 	raw, err := parseKindleExtractFile(file, userID)
 	if err != nil {
 		return err
+	}
+
+	// Create book
+	_, err = s.bookStore.GetBookByISBN(raw.ASIN)
+	if err != nil {
+		s.bookStore.CreateBook(t.Book{
+			ISBN:    raw.ASIN,
+			Title:   raw.Title,
+			Authors: raw.Authors,
+		})
 	}
 
 	// Create highlights
@@ -175,4 +235,25 @@ type CreateHighlightRequest struct {
 	Note     string `json:"note"`
 	UserId   int    `json:"userId"`
 	BookId   string `json:"bookId"`
+}
+
+func buildInsights(hs []*t.Highlight, bookStore t.BookStore) ([]*t.DailyInsight, error) {
+	var insights []*t.DailyInsight
+
+	for _, h := range hs {
+		book, err := bookStore.GetBookByISBN(h.BookID)
+		if err != nil {
+			log.Println("Error getting book: ", err)
+			return nil, err
+		}
+
+		insights = append(insights, &t.DailyInsight{
+			Text:        h.Text,
+			Note:        h.Note,
+			BookAuthors: book.Authors,
+			BookTitle:   book.Title,
+		})
+	}
+
+	return insights, nil
 }

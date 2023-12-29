@@ -1,0 +1,30 @@
+<html>
+  <head>
+    <title>Insights</title>
+  </head>
+  <body>
+    <p>Hey {{ .User.FirstName }}, here are your daily daily insight(s)</p>
+
+    <ol style="margin:auto;margin-top:20px;max-width:800px;">
+    {{ range .Insights }}
+      <li>
+        <div style="margin-bottom:20px;">
+          <span
+          style="font-size:16px;background-color:rgb(255,247,202);background-image:linear-gradient(to right,rgb(255,242,172),rgb(255,247,202))"
+          >
+          <em>"{{ .Text }}"</em>
+
+          <span style="font-size:12px">{{ .Note }}</span>
+
+          </span>
+          <div style="text-align:inherit"><span style="font-size:12px"><em>- {{ .BookTitle }} - {{ .BookAuthors }}</em></span></div>
+        </div>
+       </li>
+    {{ end }}
+    </ol>
+
+    <footer>
+      <a action="/user/{{ .User.ID }}/unsubscribe" method="POST">Unsubscribe</a>
+    </footer>
+  </body>
+</html>

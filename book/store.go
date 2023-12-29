@@ -47,7 +47,7 @@ func (s *Store) CreateBook(book t.Book) error {
 
 func scanRowsIntoBook(rows *sql.Rows) (*t.Book, error) {
 	b := new(t.Book)
-	err := rows.Scan(&b.ISBN, &b.Title, &b.Authors)
+	err := rows.Scan(&b.ISBN, &b.Title, &b.Authors, &b.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
