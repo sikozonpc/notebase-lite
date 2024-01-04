@@ -67,7 +67,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	router.HandleFunc(
 		"/daily-insights",
-		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleSendDailyInsights), h.userStore),
+		auth.WithAPIKey(u.MakeHTTPHandler(h.handleSendDailyInsights)),
 	).
 		Methods("GET")
 

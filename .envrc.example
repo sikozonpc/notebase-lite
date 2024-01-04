@@ -3,6 +3,7 @@ export ENV="development"
 export PORT="3000"
 
 export JWT_SECRET="mysuperbigsecret"
+export API_KEY="myapikey"
 
 export DB_HOST="127.0.0.1"
 export DB_PORT="3306"
@@ -15,3 +16,5 @@ export GOOGLE_CLOUD_BOOKS_BUCKET_NAME=""
 
 export SENDGRID_API_KEY=""
 export SENDGRID_FROM_EMAIL=""
+
+export PUBLIC_URL="http://localhost:3000"

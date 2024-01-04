@@ -14,12 +14,13 @@ type Config struct {
 	DBPassword         string
 	DBAddress          string
 	DBName             string
-	JWTSecret          string
-	GCPID              string
-	GCPBooksBucketName string
-	SendGridAPIKey     string
-	SendGridFromEmail  string
-	PublicURL          string
+	JWTSecret          string // Used for signing JWT tokens
+	GCPID              string // Google Cloud Project ID
+	GCPBooksBucketName string // Google CLoud Storage Bucket Name from where upload books are parsed
+	SendGridAPIKey     string 
+	SendGridFromEmail  string 
+	PublicURL          string // Used for generating links in emails
+	APIKey             string // Used for authentication with external clients like GCP pub/sub
 }
 
 type APIError struct {

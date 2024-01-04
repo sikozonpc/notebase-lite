@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sikozonpc/notebase/config"
 	t "github.com/sikozonpc/notebase/types"
 	u "github.com/sikozonpc/notebase/utils"
 )
@@ -35,6 +36,22 @@ func GetUserFromToken(t string) (int, error) {
 	}
 
 	return userID, nil
+}
+
+func WithAPIKey(handlerFunc http.HandlerFunc) http.HandlerFunc {
+	apiKey := config.Envs.APIKey
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		apiKeyFromRequest := r.Header.Get("X-API-KEY")
+
+		if apiKeyFromRequest != apiKey {
+			log.Println("invalid api key")
+			permissionDenied(w)
+			return
+		}
+
+		handlerFunc(w, r)
+	}
 }
 
 func WithJWTAuth(handlerFunc http.HandlerFunc, store t.UserStore) http.HandlerFunc {

@@ -23,6 +23,7 @@ func initConfig() t.Config {
 		GCPBooksBucketName: getEnvOrPanic("GOOGLE_CLOUD_BOOKS_BUCKET_NAME", "Google Cloud Books Bucket Name is required"),
 		SendGridAPIKey:     getEnvOrPanic("SENDGRID_API_KEY", "SendGrid API KEY is required"),
 		SendGridFromEmail:  getEnvOrPanic("SENDGRID_FROM_EMAIL", "SendGrid From email is required"),
+		APIKey:             getEnvOrPanic("API_KEY", "API Key is required"),
 	}
 }
 
