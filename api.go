@@ -30,7 +30,8 @@ func NewAPIServer(addr string, db *sql.DB) *APIServer {
 }
 
 func (s *APIServer) Run() error {
-	router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
+	router := mux.NewRouter()
+	subrouter := router.PathPrefix("/api/v1").Subrouter()
 
 	ctx := context.Background()
 
@@ -45,11 +46,14 @@ func (s *APIServer) Run() error {
 
 	userStore := user.NewStore(s.db)
 	userHandler := user.NewHandler(userStore)
-	userHandler.RegisterRoutes(router)
+	userHandler.RegisterRoutes(subrouter)
 
 	highlightStore := highlight.NewStore(s.db)
 	highlightHandler := highlight.NewHandler(highlightStore, userStore, gcpStorage, bookStore, mailer)
-	highlightHandler.RegisterRoutes(router)
+	highlightHandler.RegisterRoutes(subrouter)
+
+	// Serve static files
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))
 
 	log.Println("Listening on", s.addr)
 	log.Println("Process PID", os.Getpid())

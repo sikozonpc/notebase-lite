@@ -42,7 +42,7 @@ func (s *Store) GetUserByEmail(email string) (*t.User, error) {
 }
 
 func (s *Store) GetUserByID(id int) (*t.User, error) {
-	rows, err := s.db.Query("SELECT * FROM users WHERE id = ? AND isActive IS TRUE", id)
+	rows, err := s.db.Query("SELECT * FROM users WHERE id = ? AND isActive = 1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +81,15 @@ func (s *Store) GetUsers() ([]*t.User, error) {
 	return users, nil
 }
 
+func (s *Store) UpdateUser(user t.User) error {
+	_, err := s.db.Exec("UPDATE users SET firstName = ?, lastName = ?, email = ?, password = ?, isActive = ? WHERE id = ?", user.FirstName, user.LastName, user.Email, user.Password, user.IsActive, user.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func scanRowsIntoUser(rows *sql.Rows) (*t.User, error) {
 	user := new(t.User)
 
@@ -91,6 +100,7 @@ func scanRowsIntoUser(rows *sql.Rows) (*t.User, error) {
 		&user.Email,
 		&user.Password,
 		&user.CreatedAt,
+		&user.IsActive,
 	)
 
 	if err != nil {

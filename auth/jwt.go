@@ -19,17 +19,37 @@ func permissionDenied(w http.ResponseWriter) {
 	})
 }
 
+func GetUserFromToken(t string) (int, error) {
+	token, err := validateJWT(t)
+	if err != nil {
+		return 0, err
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	claimsUserID := claims["userID"].(string)
+
+	userID, err := strconv.Atoi(claimsUserID)
+	if err != nil {
+		log.Println("failed to convert userID to int")
+		return 0, err
+	}
+
+	return userID, nil
+}
+
 func WithJWTAuth(handlerFunc http.HandlerFunc, store t.UserStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("Authorization")
+		tokenString := u.GetTokenFromRequest(r)
 
 		token, err := validateJWT(tokenString)
 		if err != nil {
+			log.Printf("failed to validate token: %v", err)
 			permissionDenied(w)
 			return
 		}
 
 		if !token.Valid {
+			log.Println("invalid token")
 			permissionDenied(w)
 			return
 		}
@@ -46,6 +66,7 @@ func WithJWTAuth(handlerFunc http.HandlerFunc, store t.UserStore) http.HandlerFu
 
 		_, err = store.GetUserByID(userID)
 		if err != nil {
+			log.Printf("failed to get user by id: %v", err)
 			permissionDenied(w)
 			return
 		}

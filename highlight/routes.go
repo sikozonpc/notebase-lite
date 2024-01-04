@@ -70,9 +70,40 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleSendDailyInsights), h.userStore),
 	).
 		Methods("GET")
+
+	router.HandleFunc(
+		"/unsubscribe",
+		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleUnsubscribe), h.userStore),
+	).
+		Methods("GET")
+}
+
+func (s *Handler) handleUnsubscribe(w http.ResponseWriter, r *http.Request) error {
+	token := u.GetTokenFromRequest(r)
+
+	userID, err := auth.GetUserFromToken(token)
+	if err != nil {
+		return err
+	}
+
+	user, err := s.userStore.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	user.IsActive = false
+	if err := s.userStore.UpdateUser(*user); err != nil {
+		return err
+	}
+
+	log.Printf("User %s unsubscribed", user.Email)
+
+	return u.WriteJSON(w, http.StatusOK, nil)
 }
 
 func (s *Handler) handleSendDailyInsights(w http.ResponseWriter, r *http.Request) error {
+	authToken := u.GetTokenFromRequest(r)
+
 	users, err := s.userStore.GetUsers()
 	if err != nil {
 		return err
@@ -99,7 +130,7 @@ func (s *Handler) handleSendDailyInsights(w http.ResponseWriter, r *http.Request
 			return err
 		}
 
-		if err = s.mailer.SendInsights(user, insights); err != nil {
+		if err = s.mailer.SendInsights(user, insights, authToken); err != nil {
 			return err
 		}
 	}

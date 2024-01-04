@@ -238,6 +238,10 @@ func (m *mockHighlightStore) CreateHighlights(highlights []types.Highlight) erro
 
 type mockUserStore struct{}
 
+func (m *mockUserStore) UpdateUser(u types.User) error {
+	return nil
+}
+
 func (m *mockUserStore) GetUserByEmail(email string) (*types.User, error) {
 	return &types.User{}, nil
 }
@@ -266,6 +270,6 @@ func (m *mockBookStore) CreateBook(book types.Book) error {
 
 type mockMailer struct{}
 
-func (m *mockMailer) SendInsights(u *types.User, insights []*types.DailyInsight) error {
+func (m *mockMailer) SendInsights(u *types.User, insights []*types.DailyInsight, authToken string) error {
 	return nil
 }

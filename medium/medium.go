@@ -3,5 +3,5 @@ package medium
 import t "github.com/sikozonpc/notebase/types"
 
 type Medium interface {
-	SendInsights(u *t.User, insights []*t.DailyInsight) error
+	SendInsights(u *t.User, insights []*t.DailyInsight, authToken string) error
 }

@@ -19,6 +19,7 @@ type Config struct {
 	GCPBooksBucketName string
 	SendGridAPIKey     string
 	SendGridFromEmail  string
+	PublicURL          string
 }
 
 type APIError struct {
@@ -78,6 +79,8 @@ type UserStore interface {
 	GetUsers() ([]*User, error)
 
 	CreateUser(User) error
+
+	UpdateUser(User) error
 }
 
 type HighlightStore interface {

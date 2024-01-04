@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Unsubscribe</title>
+</head>
+
+<body>
+  <h1>Are you sure you want to unsubscribe?</h1>
+    <a 
+      id="unsubscribe"
+      onclick="unsubscribe()"
+      href="#"
+    >
+      Unsubscribe
+    </a>
+</body>
+<script>
+  function unsubscribe() {
+    const searchParams = new URLSearchParams(window.location.search);
+    const token = searchParams.get('token');
+
+    const url = `api/v1/unsubscribe?token=${token}`;
+    fetch(url, {
+      method: 'GET',
+    })
+      .then((response) => {
+        if (response.status === 200) {
+          alert('You have been unsubscribed');
+        } else {
+          alert('Something went wrong');
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+</script>
+</html>

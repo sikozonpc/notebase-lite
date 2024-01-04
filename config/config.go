@@ -17,6 +17,7 @@ func initConfig() t.Config {
 		DBPassword:         getEnv("DB_PASSWORD", "password"),
 		DBAddress:          fmt.Sprintf("%s:%s", getEnv("DB_HOST", "127.0.0.1"), getEnv("DB_PORT", "3306")),
 		DBName:             getEnv("DB_NAME", "notebase"),
+		PublicURL:          getEnv("PUBLIC_URL", "http://localhost:3000"),
 		JWTSecret:          getEnvOrPanic("JWT_SECRET", "JWT secret is required"),
 		GCPID:              getEnvOrPanic("GOOGLE_CLOUD_PROJECT_ID", "Google Cloud Project ID is required"),
 		GCPBooksBucketName: getEnvOrPanic("GOOGLE_CLOUD_BOOKS_BUCKET_NAME", "Google Cloud Books Bucket Name is required"),

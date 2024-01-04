@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"path/filepath"
 	"text/template"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
+	"github.com/sikozonpc/notebase/config"
 	t "github.com/sikozonpc/notebase/types"
 )
 
@@ -27,7 +29,7 @@ func NewMailer(apiKey, fromEmail string) *Mailer {
 	}
 }
 
-func (m *Mailer) SendInsights(u *t.User, insights []*t.DailyInsight) error {
+func (m *Mailer) SendInsights(u *t.User, insights []*t.DailyInsight, authToken string) error {
 	from := mail.NewEmail(FromName, m.FromEmail)
 	subject := "Daily Insight(s)"
 	userName := fmt.Sprintf("%v %v", u.FirstName, u.LastName)
@@ -38,7 +40,7 @@ func (m *Mailer) SendInsights(u *t.User, insights []*t.DailyInsight) error {
 
 	to := mail.NewEmail(userName, u.Email)
 
-	htmlContent := buildInsightsMailTemplate(u, insights)
+	htmlContent := BuildInsightsMailTemplate("template", u, insights, authToken)
 
 	message := mail.NewSingleEmail(from, subject, to, "", htmlContent)
 	response, err := m.Client.Send(message)
@@ -51,18 +53,21 @@ func (m *Mailer) SendInsights(u *t.User, insights []*t.DailyInsight) error {
 	return nil
 }
 
-func buildInsightsMailTemplate(u *t.User, insights []*t.DailyInsight) string {
-	tmpl, err := template.ParseFiles("daily.tmpl")
+func BuildInsightsMailTemplate(templateDir string, u *t.User, insights []*t.DailyInsight, authToken string) string {
+	filename := filepath.Join(templateDir, "daily.tmpl")
+	tmpl, err := template.ParseFiles(filename)
 	if err != nil {
 		panic(err)
 	}
 
 	payload := struct {
-		User     *t.User
-		Insights []*t.DailyInsight
+		UnsubscribeURL string
+		User           *t.User
+		Insights       []*t.DailyInsight
 	}{
-		User:     u,
-		Insights: insights,
+		UnsubscribeURL: fmt.Sprintf("%s/unsubscribe.html?token=%s", config.Envs.PublicURL, authToken),
+		User:           u,
+		Insights:       insights,
 	}
 
 	var out bytes.Buffer
@@ -73,4 +78,3 @@ func buildInsightsMailTemplate(u *t.User, insights []*t.DailyInsight) string {
 
 	return out.String()
 }
-

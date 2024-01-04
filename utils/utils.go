@@ -28,13 +28,37 @@ func MakeHTTPHandler(fn t.EndpointHandler) http.HandlerFunc {
 	}
 }
 
-func GetParamFromRequest(r *http.Request, param string) (int, error) {
+func GetStringParamFromRequest(r *http.Request, param string) (string, error) {
 	vars := mux.Vars(r)
-	id, ok := vars[param]
+	str, ok := vars[param]
 	if !ok {
 		log.Printf("no param: %v in request", param)
-		return 0, fmt.Errorf("no param: %v in request", param)
+		return "", fmt.Errorf("no param: %v in request", param)
 	}
 
-	return strconv.Atoi(id)
+	return str, nil
+}
+
+func GetParamFromRequest(r *http.Request, param string) (int, error) {
+	str, err := GetStringParamFromRequest(r, param)
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.Atoi(str)
+}
+
+func GetTokenFromRequest(r *http.Request) string {
+	tokenAuth := r.Header.Get("Authorization")
+	tokenQuery := r.URL.Query().Get("token")
+
+	if tokenAuth != "" {
+		return tokenAuth
+	}
+
+	if tokenQuery != "" {
+		return tokenQuery
+	}
+
+	return ""
 }
