@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -66,7 +67,13 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 		Methods("POST")
 
 	router.HandleFunc(
-		"/daily-insights",
+		"/cloud/parse-kindle-extract/{fileName}",
+		auth.WithAPIKey(u.MakeHTTPHandler(h.handleCloudKindleParse)),
+	).
+		Methods("POST")
+
+	router.HandleFunc(
+		"/cloud/daily-insights",
 		auth.WithAPIKey(u.MakeHTTPHandler(h.handleSendDailyInsights)),
 	).
 		Methods("GET")
@@ -138,16 +145,14 @@ func (s *Handler) handleSendDailyInsights(w http.ResponseWriter, r *http.Request
 	return u.WriteJSON(w, http.StatusOK, nil)
 }
 
-func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) error {
+func (s *Handler) handleCloudKindleParse(w http.ResponseWriter, r *http.Request) error {
 	userID, err := u.GetParamFromRequest(r, "userID")
 	if err != nil {
 		return err
 	}
 
-	query := r.URL.Query()
-	filename := query.Get("filename")
-
-	if filename == "" {
+	filename, err := u.GetStringParamFromRequest(r, "fileName")
+	if err != nil {
 		return u.WriteJSON(w, http.StatusBadRequest, fmt.Errorf("filename is required"))
 	}
 
@@ -156,40 +161,50 @@ func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) 
 		return u.WriteJSON(w, http.StatusInternalServerError, err)
 	}
 
-	raw, err := parseKindleExtractFile(file, userID)
+	raw, err := parseKindleExtractFromString(file)
 	if err != nil {
 		return err
 	}
 
-	// Create book
-	_, err = s.bookStore.GetBookByISBN(raw.ASIN)
+	err = s.createDataFromRawBook(raw, userID)
 	if err != nil {
-		s.bookStore.CreateBook(t.Book{
-			ISBN:    raw.ASIN,
-			Title:   raw.Title,
-			Authors: raw.Authors,
-		})
-	}
-
-	// Create highlights
-	hs := make([]t.Highlight, len(raw.Highlights))
-	for i, h := range raw.Highlights {
-		hs[i] = t.Highlight{
-			Text:     h.Text,
-			Location: h.Location.URL,
-			Note:     h.Note,
-			UserID:   userID,
-			BookID:   raw.ASIN,
-		}
-	}
-
-	err = s.store.CreateHighlights(hs)
-	if err != nil {
-		log.Println("Error creating highlights: ", err)
 		return err
 	}
 
 	return u.WriteJSON(w, http.StatusOK, raw)
+}
+
+func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) error {
+	userID, err := u.GetParamFromRequest(r, "userID")
+	if err != nil {
+		return err
+	}
+
+	// Parse the multipart form in the request
+	// Maximum memory 20MB
+	err = r.ParseMultipartForm(20 << 20)
+	if err != nil {
+		log.Println("Error parsing multipart form: ", err, " (file might be too large)")
+		return u.WriteJSON(w, http.StatusBadRequest, err)
+	}
+
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		return u.WriteJSON(w, http.StatusBadRequest, err)
+	}
+	defer file.Close()
+
+	raw, err := parseKindleExtractFromFile(file)
+	if err != nil {
+		return u.WriteJSON(w, http.StatusBadRequest, err)
+	}
+
+	err = s.createDataFromRawBook(raw, userID)
+	if err != nil {
+		return err
+	}
+
+	return u.WriteJSON(w, http.StatusNoContent, "")
 }
 
 func (s *Handler) handleGetUserHighlights(w http.ResponseWriter, r *http.Request) error {
@@ -268,6 +283,10 @@ type CreateHighlightRequest struct {
 	BookId   string `json:"bookId"`
 }
 
+type ParseKindleFileRequest struct {
+	File multipart.File `json:"file"`
+}
+
 func buildInsights(hs []*t.Highlight, bookStore t.BookStore) ([]*t.DailyInsight, error) {
 	var insights []*t.DailyInsight
 
@@ -287,4 +306,36 @@ func buildInsights(hs []*t.Highlight, bookStore t.BookStore) ([]*t.DailyInsight,
 	}
 
 	return insights, nil
+}
+
+func (s *Handler) createDataFromRawBook(raw *t.RawExtractBook, userID int) error {
+	// Create book
+	_, err := s.bookStore.GetBookByISBN(raw.ASIN)
+	if err != nil {
+		s.bookStore.CreateBook(t.Book{
+			ISBN:    raw.ASIN,
+			Title:   raw.Title,
+			Authors: raw.Authors,
+		})
+	}
+
+	// Create highlights
+	hs := make([]t.Highlight, len(raw.Highlights))
+	for i, h := range raw.Highlights {
+		hs[i] = t.Highlight{
+			Text:     h.Text,
+			Location: h.Location.URL,
+			Note:     h.Note,
+			UserID:   userID,
+			BookID:   raw.ASIN,
+		}
+	}
+
+	err = s.store.CreateHighlights(hs)
+	if err != nil {
+		log.Println("Error creating highlights: ", err)
+		return err
+	}
+
+	return nil
 }

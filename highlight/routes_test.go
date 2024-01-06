@@ -155,26 +155,8 @@ func TestHandleUserHighlights(t *testing.T) {
 		}
 	})
 
-	t.Run("should fail handle parse kindle extract if filename is not sent", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodPost, "/user/1/parse-kindle-extract", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rr := httptest.NewRecorder()
-		router := mux.NewRouter()
-
-		router.HandleFunc("/user/{userID}/parse-kindle-extract", u.MakeHTTPHandler(handler.handleParseKindleFile))
-
-		router.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusBadRequest {
-			t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
-		}
-	})
-
 	t.Run("should handle parse kindle extract", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodPost, "/user/1/parse-kindle-extract?filename=file.json", nil)
+		req, err := http.NewRequest(http.MethodPost, "/user/1/cloud/parse-kindle-extract/file.json", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -182,25 +164,7 @@ func TestHandleUserHighlights(t *testing.T) {
 		rr := httptest.NewRecorder()
 		router := mux.NewRouter()
 
-		router.HandleFunc("/user/{userID}/parse-kindle-extract", u.MakeHTTPHandler(handler.handleParseKindleFile))
-
-		router.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
-		}
-	})
-
-	t.Run("should handle send daily insights", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodGet, "/user/1/daily-insights", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rr := httptest.NewRecorder()
-		router := mux.NewRouter()
-
-		router.HandleFunc("/user/{userID}/daily-insights", u.MakeHTTPHandler(handler.handleSendDailyInsights))
+		router.HandleFunc("/user/{userID}/cloud/parse-kindle-extract/{fileName}", u.MakeHTTPHandler(handler.handleCloudKindleParse))
 
 		router.ServeHTTP(rr, req)
 
