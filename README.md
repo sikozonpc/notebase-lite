@@ -19,8 +19,3 @@ make run
 ```
 
 The project requires environment variables to be set. You can find the list of required variables in the `.envrc.example` file.
-
-## Technical
-
-The project is built just using the standard library and a few essentials (MySQL driver and mux). The project is built in a such a way
-to be as minimal and simple to test how powerful the GO standard library goes. However as the project grows it might be subject to change.
