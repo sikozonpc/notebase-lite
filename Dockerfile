@@ -1,16 +1,12 @@
-FROM golang:1.22 AS builder
-RUN apt-get update
-ENV GO111MODULE=on \
-  CGO_ENABLED=0 \
-  GOOS=linux \
-  GOARCH=amd64
+# The build stage
+FROM golang:1.21 as builder
 WORKDIR /app
 COPY . .
-RUN go install
-RUN CGO_ENABLED=0 GOOS=linux go build -o /api *.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api *.go
 
+# The run stage
 FROM scratch
-WORKDIR /
-COPY --from=builder /api /api
-
-CMD ["/api"]
+WORKDIR /app
+COPY --from=builder /app/api .
+EXPOSE 8080
+CMD ["./api"]
