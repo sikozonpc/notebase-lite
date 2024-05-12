@@ -15,8 +15,6 @@ func initConfig() t.Config {
 		MongoURI:  getEnv("MONGODB_URI", "mongodb://localhost:27017"),
 		PublicURL: getEnv("PUBLIC_URL", "http://localhost:3000"),
 		JWTSecret: getEnv("JWT_SECRET", "JWT secret is required"),
-		/* GCPID:              getEnv("GOOGLE_CLOUD_PROJECT_ID", "Google Cloud Project ID is required"),
-		GCPBooksBucketName: getEnv("GOOGLE_CLOUD_BOOKS_BUCKET_NAME", "Google Cloud Books Bucket Name is required"), */
 		SendGridAPIKey:    getEnv("SENDGRID_API_KEY", "SendGrid API KEY is required"),
 		SendGridFromEmail: getEnv("SENDGRID_FROM_EMAIL", "SendGrid From email is required"),
 		APIKey:            getEnv("API_KEY", "API Key is required"),
