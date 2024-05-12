@@ -1,56 +1,45 @@
 package book
 
 import (
-	"database/sql"
-	"fmt"
+	"context"
 
 	t "github.com/sikozonpc/notebase/types"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+const (
+	DbName   = "notebase"
+	CollName = "books"
 )
 
 type Store struct {
-	db *sql.DB
+	db *mongo.Client
 }
 
-func NewStore(db *sql.DB) *Store {
+func NewStore(db *mongo.Client) *Store {
 	return &Store{db: db}
 }
 
-func (s *Store) GetBookByISBN(ISBN string) (*t.Book, error) {
-	rows, err := s.db.Query("SELECT * FROM books WHERE isbn = ?", ISBN)
-	if err != nil {
-		return nil, err
-	}
+func (s *Store) GetByISBN(ctx context.Context, isbn string) (*t.Book, error) {
+	col := s.db.Database(DbName).Collection(CollName)
 
-	book := new(t.Book)
-	for rows.Next() {
-		book, err = scanRowsIntoBook(rows)
-		if err != nil {
-			return nil, err
-		}
-	}
+	oID, _ := primitive.ObjectIDFromHex(isbn)
 
-	if book.ISBN == "" {
-		return nil, fmt.Errorf("book not found")
-	}
+	var b t.Book
+	err := col.FindOne(ctx, bson.M{
+		"isbn":        oID,
+	}).Decode(&b)
 
-	return book, nil
+	return &b, err
 }
 
-func (s *Store) CreateBook(book t.Book) error {
-	_, err := s.db.Exec("INSERT INTO books (isbn, title, authors) VALUES (?, ?, ?)", book.ISBN, book.Title, book.Authors)
-	if err != nil {
-		return err
-	}
+func (s *Store) Create(ctx context.Context, b *t.CreateBookRequest) (primitive.ObjectID, error) {
+	col := s.db.Database(DbName).Collection(CollName)
 
-	return nil
-}
+	newBook, err := col.InsertOne(ctx, b)
 
-func scanRowsIntoBook(rows *sql.Rows) (*t.Book, error) {
-	b := new(t.Book)
-	err := rows.Scan(&b.ISBN, &b.Title, &b.Authors, &b.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	id := newBook.InsertedID.(primitive.ObjectID)
+	return id, err
 }

@@ -1,111 +1,95 @@
 package user
 
 import (
-	"database/sql"
-	"fmt"
+	"context"
 
 	t "github.com/sikozonpc/notebase/types"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+const (
+	DbName   = "notebase"
+	CollName = "users"
 )
 
 type Store struct {
-	db *sql.DB
+	db *mongo.Client
 }
 
-func NewStore(db *sql.DB) *Store {
+func NewStore(db *mongo.Client) *Store {
 	return &Store{db: db}
 }
 
-func (s *Store) CreateUser(user t.User) error {
-	_, err := s.db.Exec("INSERT INTO users (firstName, lastName, email, password) VALUES (?, ?, ?, ?)", user.FirstName, user.LastName, user.Email, user.Password)
-	if err != nil {
-		return err
-	}
+func (s *Store) Create(ctx context.Context, b t.RegisterRequest) (primitive.ObjectID, error) {
+	col := s.db.Database(DbName).Collection(CollName)
 
-	return nil
+	newUser, err := col.InsertOne(ctx, b)
+
+	id := newUser.InsertedID.(primitive.ObjectID)
+	return id, err
 }
 
-func (s *Store) GetUserByEmail(email string) (*t.User, error) {
-	rows, err := s.db.Query("SELECT * FROM users WHERE email = ?", email)
-	if err != nil {
-		return nil, err
-	}
+func (s *Store) GetUserByEmail(ctx context.Context, email string) (*t.User, error) {
+	col := s.db.Database(DbName).Collection(CollName)
 
-	u := new(t.User)
-	for rows.Next() {
-		u, err = scanRowsIntoUser(rows)
-		if err != nil {
-			return nil, err
-		}
-	}
+	var u t.User
+	err := col.FindOne(ctx, bson.M{
+		"email": email,
+	}).Decode(&u)
 
-	return u, nil
+	return &u, err
 }
 
-func (s *Store) GetUserByID(id int) (*t.User, error) {
-	rows, err := s.db.Query("SELECT * FROM users WHERE id = ? AND isActive = 1", id)
-	if err != nil {
-		return nil, err
-	}
+func (s *Store) GetUserByID(ctx context.Context, id string) (*t.User, error) {
+	col := s.db.Database(DbName).Collection(CollName)
 
-	u := new(t.User)
-	for rows.Next() {
-		u, err = scanRowsIntoUser(rows)
-		if err != nil {
-			return nil, err
-		}
-	}
+	oID, _ := primitive.ObjectIDFromHex(id)
 
-	if u.ID == 0 {
-		return nil, fmt.Errorf("user not found")
-	}
+	var u t.User
+	err := col.FindOne(ctx, bson.M{
+		"_id": oID,
+	}).Decode(&u)
 
-	return u, nil
+	return &u, err
 }
 
-func (s *Store) GetUsers() ([]*t.User, error) {
-	rows, err := s.db.Query("SELECT * FROM users")
+func (s *Store) GetUsers(ctx context.Context) ([]*t.User, error) {
+	col := s.db.Database(DbName).Collection(CollName)
+
+	cursor, err := col.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
 	}
 
 	users := make([]*t.User, 0)
-	for rows.Next() {
-		u, err := scanRowsIntoUser(rows)
-		if err != nil {
+	for cursor.Next(ctx) {
+		var u t.User
+		if err := cursor.Decode(&u); err != nil {
 			return nil, err
 		}
 
-		users = append(users, u)
+		users = append(users, &u)
 	}
 
 	return users, nil
 }
 
-func (s *Store) UpdateUser(user t.User) error {
-	_, err := s.db.Exec("UPDATE users SET firstName = ?, lastName = ?, email = ?, password = ?, isActive = ? WHERE id = ?", user.FirstName, user.LastName, user.Email, user.Password, user.IsActive, user.ID)
-	if err != nil {
-		return err
-	}
+func (s *Store) UpdateUser(ctx context.Context, u t.User) error {
+	col := s.db.Database(DbName).Collection(CollName)
 
-	return nil
-}
+	_, err := col.UpdateOne(ctx, bson.M{
+		"_id": u.ID,
+	}, bson.M{
+		"$set": bson.M{
+			"firstName": u.FirstName,
+			"lastName":  u.LastName,
+			"email":     u.Email,
+			"password":  u.Password,
+			"isActive":  u.IsActive,
+		},
+	})
 
-func scanRowsIntoUser(rows *sql.Rows) (*t.User, error) {
-	user := new(t.User)
-
-	err := rows.Scan(
-		&user.ID,
-		&user.FirstName,
-		&user.LastName,
-		&user.Email,
-		&user.Password,
-		&user.IsActive,
-		&user.CreatedAt,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
+	return err
 }

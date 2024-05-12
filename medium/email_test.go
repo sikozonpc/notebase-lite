@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sikozonpc/notebase/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestBuildInsightsMailTemplate(t *testing.T) {
@@ -24,7 +25,7 @@ func TestBuildInsightsMailTemplate(t *testing.T) {
 				FirstName: "Test",
 				LastName:  "Test",
 				Email:     "gopher@gopher.xyz",
-				ID:        42,
+				ID:        primitive.NewObjectID(),
 				IsActive:  true,
 			}
 

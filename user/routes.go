@@ -41,12 +41,12 @@ func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("method %s not allowed", r.Method)
 	}
 
-	userID, err := u.GetParamFromRequest(r, "userID")
+	userID, err := u.GetStringParamFromRequest(r, "userID")
 	if err != nil {
 		return err
 	}
 
-	user, err := h.store.GetUserByID(userID)
+	user, err := h.store.GetUserByID(r.Context(), string(userID))
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	user, err := h.store.GetUserByEmail(payload.Email)
+	user, err := h.store.GetUserByEmail(r.Context(), payload.Email)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("invalid password or user does not exist")
 	}
 
-	token, err := createAndSetAuthCookie(user.ID, w)
+	token, err := createAndSetAuthCookie(user.ID.Hex(), w)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("method %s not allowed", r.Method)
 	}
 
-	payload := new(RegisterRequest)
+	payload := new(t.RegisterRequest)
 	if err := json.NewDecoder(r.Body).Decode(payload); err != nil {
 		return err
 	}
@@ -96,20 +96,21 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	user := New(payload.FirstName, payload.LastName, payload.Email, hashedPassword)
+	payload.Password = string(hashedPassword)
 
-	if err := h.store.CreateUser(*user); err != nil {
+	id, err := h.store.Create(r.Context(), *payload)
+	if err != nil {
 		return err
 	}
 
-	token, err := createAndSetAuthCookie(user.ID, w)
+	token, err := createAndSetAuthCookie(id.Hex(), w)
 	if err != nil {
 		return err
 	}
 
 	return u.WriteJSON(w, http.StatusOK, token)
 }
-func createAndSetAuthCookie(userID int, w http.ResponseWriter) (string, error) {
+func createAndSetAuthCookie(userID string, w http.ResponseWriter) (string, error) {
 	secret := []byte(config.Envs.JWTSecret)
 	token, err := auth.CreateJWT(secret, userID)
 	if err != nil {
@@ -122,13 +123,6 @@ func createAndSetAuthCookie(userID int, w http.ResponseWriter) (string, error) {
 	})
 
 	return token, nil
-}
-
-type RegisterRequest struct {
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
 }
 
 type LoginRequest struct {

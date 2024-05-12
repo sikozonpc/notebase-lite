@@ -5,14 +5,7 @@ export PORT="3000"
 export JWT_SECRET="mysuperbigsecret"
 export API_KEY="myapikey"
 
-export DB_HOST="127.0.0.1"
-export DB_PORT="3306"
-export DB_USER="root"
-export DB_PASSWORD="mypassword"
-export DB_NAME="highlights"
-
-export GOOGLE_CLOUD_PROJECT_ID=""
-export GOOGLE_CLOUD_BOOKS_BUCKET_NAME=""
+export MONGODB_URI="mongodb://localhost:27017/boilerplate"
 
 export SENDGRID_API_KEY=""
 export SENDGRID_FROM_EMAIL=""

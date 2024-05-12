@@ -8,7 +8,7 @@ import (
 
 func TestCreateJWT(t *testing.T) {
 	secret := []byte("secret")
-	userID := 1
+	userID := "1"
 
 	token, err := CreateJWT(secret, userID)
 	if err != nil {

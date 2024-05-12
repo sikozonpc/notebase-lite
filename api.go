@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -15,14 +14,15 @@ import (
 	"github.com/sikozonpc/notebase/medium"
 	"github.com/sikozonpc/notebase/storage"
 	"github.com/sikozonpc/notebase/user"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type APIServer struct {
 	addr string
-	db   *sql.DB
+	db   *mongo.Client
 }
 
-func NewAPIServer(addr string, db *sql.DB) *APIServer {
+func NewAPIServer(addr string, db *mongo.Client) *APIServer {
 	return &APIServer{
 		addr: addr,
 		db:   db,

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
 	t "github.com/sikozonpc/notebase/types"
@@ -37,15 +36,6 @@ func GetStringParamFromRequest(r *http.Request, param string) (string, error) {
 	}
 
 	return str, nil
-}
-
-func GetParamFromRequest(r *http.Request, param string) (int, error) {
-	str, err := GetStringParamFromRequest(r, param)
-	if err != nil {
-		return 0, err
-	}
-
-	return strconv.Atoi(str)
 }
 
 func GetTokenFromRequest(r *http.Request) string {

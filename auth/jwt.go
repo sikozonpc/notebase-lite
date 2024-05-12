@@ -1,11 +1,11 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -20,22 +20,16 @@ func permissionDenied(w http.ResponseWriter) {
 	})
 }
 
-func GetUserFromToken(t string) (int, error) {
+func GetUserFromToken(t string) (string, error) {
 	token, err := validateJWT(t)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	claims := token.Claims.(jwt.MapClaims)
 	claimsUserID := claims["userID"].(string)
 
-	userID, err := strconv.Atoi(claimsUserID)
-	if err != nil {
-		log.Println("failed to convert userID to int")
-		return 0, err
-	}
-
-	return userID, nil
+	return claimsUserID, nil
 }
 
 func WithAPIKey(handlerFunc http.HandlerFunc) http.HandlerFunc {
@@ -74,14 +68,7 @@ func WithJWTAuth(handlerFunc http.HandlerFunc, store t.UserStore) http.HandlerFu
 		claims := token.Claims.(jwt.MapClaims)
 		claimsUserID := claims["userID"].(string)
 
-		userID, err := strconv.Atoi(claimsUserID)
-		if err != nil {
-			log.Println("failed to convert userID to int")
-			permissionDenied(w)
-			return
-		}
-
-		_, err = store.GetUserByID(userID)
+		_, err = store.GetUserByID(context.Background(), claimsUserID)
 		if err != nil {
 			log.Printf("failed to get user by id: %v", err)
 			permissionDenied(w)
@@ -93,9 +80,9 @@ func WithJWTAuth(handlerFunc http.HandlerFunc, store t.UserStore) http.HandlerFu
 	}
 }
 
-func CreateJWT(secret []byte, userID int) (string, error) {
+func CreateJWT(secret []byte, userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userID":    strconv.Itoa(userID),
+		"userID":    userID,
 		"expiresAt": time.Now().Add(time.Hour * 24 * 120).Unix(),
 	})
 

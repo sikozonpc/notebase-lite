@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 
 	t "github.com/sikozonpc/notebase/types"
@@ -11,19 +10,16 @@ var Envs = initConfig()
 
 func initConfig() t.Config {
 	return t.Config{
-		Env:                getEnv("ENV", "development"),
-		Port:               getEnv("PORT", "8080"),
-		DBUser:             getEnv("DB_USER", "root"),
-		DBPassword:         getEnv("DB_PASSWORD", "password"),
-		DBAddress:          fmt.Sprintf("%s:%s", getEnv("DB_HOST", "127.0.0.1"), getEnv("DB_PORT", "3306")),
-		DBName:             getEnv("DB_NAME", "notebase"),
-		PublicURL:          getEnv("PUBLIC_URL", "http://localhost:3000"),
-		JWTSecret:          getEnvOrPanic("JWT_SECRET", "JWT secret is required"),
-		GCPID:              getEnvOrPanic("GOOGLE_CLOUD_PROJECT_ID", "Google Cloud Project ID is required"),
-		GCPBooksBucketName: getEnvOrPanic("GOOGLE_CLOUD_BOOKS_BUCKET_NAME", "Google Cloud Books Bucket Name is required"),
-		SendGridAPIKey:     getEnvOrPanic("SENDGRID_API_KEY", "SendGrid API KEY is required"),
-		SendGridFromEmail:  getEnvOrPanic("SENDGRID_FROM_EMAIL", "SendGrid From email is required"),
-		APIKey:             getEnvOrPanic("API_KEY", "API Key is required"),
+		Env:       getEnv("ENV", "development"),
+		Port:      getEnv("PORT", "8080"),
+		MongoURI:  getEnv("MONGODB_URI", "mongodb://localhost:27017"),
+		PublicURL: getEnv("PUBLIC_URL", "http://localhost:3000"),
+		JWTSecret: getEnv("JWT_SECRET", "JWT secret is required"),
+		/* GCPID:              getEnv("GOOGLE_CLOUD_PROJECT_ID", "Google Cloud Project ID is required"),
+		GCPBooksBucketName: getEnv("GOOGLE_CLOUD_BOOKS_BUCKET_NAME", "Google Cloud Books Bucket Name is required"), */
+		SendGridAPIKey:    getEnv("SENDGRID_API_KEY", "SendGrid API KEY is required"),
+		SendGridFromEmail: getEnv("SENDGRID_FROM_EMAIL", "SendGrid From email is required"),
+		APIKey:            getEnv("API_KEY", "API Key is required"),
 	}
 }
 
@@ -33,12 +29,4 @@ func getEnv(key, fallback string) string {
 	}
 
 	return fallback
-}
-
-func getEnvOrPanic(key, err string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-
-	panic(err)
 }

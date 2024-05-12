@@ -2,6 +2,7 @@ package highlight
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"github.com/sikozonpc/notebase/storage"
 	types "github.com/sikozonpc/notebase/types"
 	u "github.com/sikozonpc/notebase/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var fakeHighlight *types.Highlight
@@ -64,12 +66,12 @@ func TestHandleUserHighlights(t *testing.T) {
 
 	t.Run("should handle get highlight by ID", func(t *testing.T) {
 		fakeHighlight = &types.Highlight{
-			ID:       1,
+			ID:       primitive.NewObjectID(),
 			Text:     "test",
 			Location: "test",
 			Note:     "test",
 			BookID:   "B004XCFJ3E",
-			UserID:   1,
+			UserID:   primitive.NewObjectID(),
 		}
 
 		req, err := http.NewRequest(http.MethodGet, "/user/1/highlight/1", nil)
@@ -176,64 +178,64 @@ func TestHandleUserHighlights(t *testing.T) {
 
 type mockHighlightStore struct{}
 
-func (m *mockHighlightStore) GetUserHighlights(userID int) ([]*types.Highlight, error) {
-	return []*types.Highlight{}, nil
+func (m *mockHighlightStore) CreateHighlight(context.Context, *types.CreateHighlightRequest) (primitive.ObjectID, error) {
+	return primitive.NilObjectID, nil
 }
 
-func (m *mockHighlightStore) GetRandomHighlights(userID int, limit int) ([]*types.Highlight, error) {
-	return []*types.Highlight{}, nil
-}
-
-func (m *mockHighlightStore) CreateHighlight(h types.Highlight) error {
-	return nil
-}
-
-func (m *mockHighlightStore) GetHighlightByID(id, userID int) (*types.Highlight, error) {
+func (m *mockHighlightStore) GetHighlightByID(context.Context, primitive.ObjectID, primitive.ObjectID) (*types.Highlight, error) {
 	return fakeHighlight, nil
 }
 
-func (m *mockHighlightStore) DeleteHighlight(id int) error {
+func (m *mockHighlightStore) GetUserHighlights(context.Context, primitive.ObjectID) ([]*types.Highlight, error) {
+	return []*types.Highlight{}, nil
+}
+
+func (m *mockHighlightStore) DeleteHighlight(context.Context, primitive.ObjectID) error {
 	return nil
 }
 
-func (m *mockHighlightStore) CreateHighlights(highlights []types.Highlight) error {
-	return nil
+func (m *mockHighlightStore) GetRandomHighlights(context.Context, primitive.ObjectID, int) ([]*types.Highlight, error) {
+	return []*types.Highlight{}, nil
 }
 
 type mockUserStore struct{}
 
-func (m *mockUserStore) UpdateUser(u types.User) error {
-	return nil
+func (m *mockUserStore) Create(context.Context, types.RegisterRequest) (primitive.ObjectID, error) {
+	return primitive.NilObjectID, nil
 }
 
-func (m *mockUserStore) GetUserByEmail(email string) (*types.User, error) {
+func (m *mockUserStore) GetUserByID(context.Context, string) (*types.User, error) {
 	return &types.User{}, nil
 }
 
-func (m *mockUserStore) CreateUser(u types.User) error {
-	return nil
-}
-
-func (m *mockUserStore) GetUserByID(id int) (*types.User, error) {
-	return &types.User{}, nil
-}
-
-func (m *mockUserStore) GetUsers() ([]*types.User, error) {
+func (m *mockUserStore) GetUsers(context.Context) ([]*types.User, error) {
 	return []*types.User{}, nil
+}
+
+func (m *mockUserStore) GetUserByEmail(context.Context, string) (*types.User, error) {
+	return &types.User{}, nil
+}
+
+func (m *mockUserStore) UpdateUser(context.Context, types.User) error {
+	return nil
 }
 
 type mockBookStore struct{}
 
-func (m *mockBookStore) GetBookByISBN(ISBN string) (*types.Book, error) {
+func (m *mockBookStore) GetByISBN(context.Context, string) (*types.Book, error) {
 	return &types.Book{}, nil
 }
 
-func (m *mockBookStore) CreateBook(book types.Book) error {
-	return nil
+func (m *mockBookStore) Create(context.Context, *types.CreateBookRequest) (primitive.ObjectID, error) {
+	return primitive.NilObjectID, nil
 }
 
 type mockMailer struct{}
 
-func (m *mockMailer) SendInsights(u *types.User, insights []*types.DailyInsight, authToken string) error {
+func (m *mockMailer) SendMail(string, string, string) error {
+	return nil
+}
+
+func (m *mockMailer) SendInsights(*types.User, []*types.DailyInsight, string) error {
 	return nil
 }

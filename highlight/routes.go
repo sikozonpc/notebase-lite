@@ -1,6 +1,7 @@
 package highlight
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"github.com/sikozonpc/notebase/storage"
 	t "github.com/sikozonpc/notebase/types"
 	u "github.com/sikozonpc/notebase/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Handler struct {
@@ -62,7 +64,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	router.HandleFunc(
 		"/user/{userID}/parse-kindle-extract",
-		auth.WithJWTAuth(u.MakeHTTPHandler(h.handleParseKindleFile), h.userStore),
+		u.MakeHTTPHandler(h.handleParseKindleFile),
 	).
 		Methods("POST")
 
@@ -93,13 +95,13 @@ func (s *Handler) handleUnsubscribe(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	user, err := s.userStore.GetUserByID(userID)
+	user, err := s.userStore.GetUserByID(r.Context(), userID)
 	if err != nil {
 		return err
 	}
 
 	user.IsActive = false
-	if err := s.userStore.UpdateUser(*user); err != nil {
+	if err := s.userStore.UpdateUser(r.Context(), *user); err != nil {
 		return err
 	}
 
@@ -111,18 +113,18 @@ func (s *Handler) handleUnsubscribe(w http.ResponseWriter, r *http.Request) erro
 func (s *Handler) handleSendDailyInsights(w http.ResponseWriter, r *http.Request) error {
 	authToken := u.GetTokenFromRequest(r)
 
-	users, err := s.userStore.GetUsers()
+	users, err := s.userStore.GetUsers(r.Context())
 	if err != nil {
 		return err
 	}
 
 	for _, u := range users {
-		user, err := s.userStore.GetUserByID(u.ID)
+		user, err := s.userStore.GetUserByID(r.Context(), u.ID.Hex())
 		if err != nil {
 			return fmt.Errorf("user with id %d not found", u.ID)
 		}
 
-		hs, err := s.store.GetRandomHighlights(u.ID, 3)
+		hs, err := s.store.GetRandomHighlights(r.Context(), u.ID, 3)
 		if err != nil {
 			return err
 		}
@@ -146,7 +148,7 @@ func (s *Handler) handleSendDailyInsights(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Handler) handleCloudKindleParse(w http.ResponseWriter, r *http.Request) error {
-	userID, err := u.GetParamFromRequest(r, "userID")
+	userID, err := u.GetStringParamFromRequest(r, "userID")
 	if err != nil {
 		return err
 	}
@@ -175,17 +177,9 @@ func (s *Handler) handleCloudKindleParse(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) error {
-	userID, err := u.GetParamFromRequest(r, "userID")
+	userID, err := u.GetStringParamFromRequest(r, "userID")
 	if err != nil {
 		return err
-	}
-
-	// Parse the multipart form in the request
-	// Maximum memory 20MB
-	err = r.ParseMultipartForm(20 << 20)
-	if err != nil {
-		log.Println("Error parsing multipart form: ", err, " (file might be too large)")
-		return u.WriteJSON(w, http.StatusBadRequest, err)
 	}
 
 	file, _, err := r.FormFile("file")
@@ -208,12 +202,14 @@ func (s *Handler) handleParseKindleFile(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Handler) handleGetUserHighlights(w http.ResponseWriter, r *http.Request) error {
-	userID, err := u.GetParamFromRequest(r, "userID")
+	userID, err := u.GetStringParamFromRequest(r, "userID")
 	if err != nil {
 		return err
 	}
 
-	hs, err := s.store.GetUserHighlights(userID)
+	oID, _ := primitive.ObjectIDFromHex(string(userID))
+
+	hs, err := s.store.GetUserHighlights(r.Context(), oID)
 	if err != nil {
 		return err
 	}
@@ -222,12 +218,13 @@ func (s *Handler) handleGetUserHighlights(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Handler) handleDeleteHighlight(w http.ResponseWriter, r *http.Request) error {
-	id, err := u.GetParamFromRequest(r, "id")
+	id, err := u.GetStringParamFromRequest(r, "id")
 	if err != nil {
 		return err
 	}
 
-	err = s.store.DeleteHighlight(id)
+	oID, _ := primitive.ObjectIDFromHex(string(id))
+	err = s.store.DeleteHighlight(r.Context(), oID)
 	if err != nil {
 		return err
 	}
@@ -236,23 +233,25 @@ func (s *Handler) handleDeleteHighlight(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Handler) handleGetHighlightByID(w http.ResponseWriter, r *http.Request) error {
-	userID, err := u.GetParamFromRequest(r, "userID")
+	userID, err := u.GetStringParamFromRequest(r, "userID")
 	if err != nil {
 		return err
 	}
+	oUserID, _ := primitive.ObjectIDFromHex(string(userID))
 
-	id, err := u.GetParamFromRequest(r, "id")
+	id, err := u.GetStringParamFromRequest(r, "id")
 	if err != nil {
 		return err
 	}
+	oID, _ := primitive.ObjectIDFromHex(string(id))
 
-	h, err := s.store.GetHighlightByID(id, userID)
+	h, err := s.store.GetHighlightByID(r.Context(), oID, oUserID)
 	if err != nil {
 		return err
 	}
 
 	if h == nil {
-		return u.WriteJSON(w, http.StatusNotFound, t.APIError{Error: fmt.Errorf("highlight with id %d not found", id).Error()})
+		return u.WriteJSON(w, http.StatusNotFound, t.APIError{Error: fmt.Errorf("highlight with id %v not found", id).Error()})
 	}
 
 	return u.WriteJSON(w, http.StatusOK, h)
@@ -265,9 +264,17 @@ func (s *Handler) handleCreateHighlight(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	highlight := New(payload.Text, payload.Location, payload.Note, payload.BookId, payload.UserId)
+	oID, _ := primitive.ObjectIDFromHex(string(payload.UserId))
 
-	if err := s.store.CreateHighlight(*highlight); err != nil {
+	highlight := &t.CreateHighlightRequest{
+		Text:     payload.Text,
+		Location: payload.Location,
+		Note:     payload.Note,
+		UserID:   oID,
+		BookID:   payload.BookId,
+	}
+
+	if _, err := s.store.CreateHighlight(r.Context(), highlight); err != nil {
 		return err
 	}
 
@@ -279,7 +286,7 @@ type CreateHighlightRequest struct {
 	Text     string `json:"text"`
 	Location string `json:"location"`
 	Note     string `json:"note"`
-	UserId   int    `json:"userId"`
+	UserId   string `json:"userId"`
 	BookId   string `json:"bookId"`
 }
 
@@ -291,7 +298,7 @@ func buildInsights(hs []*t.Highlight, bookStore t.BookStore) ([]*t.DailyInsight,
 	var insights []*t.DailyInsight
 
 	for _, h := range hs {
-		book, err := bookStore.GetBookByISBN(h.BookID)
+		book, err := bookStore.GetByISBN(context.Background(), h.BookID)
 		if err != nil {
 			log.Println("Error getting book: ", err)
 			return nil, err
@@ -308,33 +315,36 @@ func buildInsights(hs []*t.Highlight, bookStore t.BookStore) ([]*t.DailyInsight,
 	return insights, nil
 }
 
-func (s *Handler) createDataFromRawBook(raw *t.RawExtractBook, userID int) error {
+func (s *Handler) createDataFromRawBook(raw *t.RawExtractBook, userID string) error {
 	// Create book
-	_, err := s.bookStore.GetBookByISBN(raw.ASIN)
+	_, err := s.bookStore.GetByISBN(context.Background(), raw.ASIN)
 	if err != nil {
-		s.bookStore.CreateBook(t.Book{
+		s.bookStore.Create(context.Background(), &t.CreateBookRequest{
 			ISBN:    raw.ASIN,
 			Title:   raw.Title,
 			Authors: raw.Authors,
 		})
 	}
 
+	oID, _ := primitive.ObjectIDFromHex(string(userID))
+
 	// Create highlights
-	hs := make([]t.Highlight, len(raw.Highlights))
+	hs := make([]*t.CreateHighlightRequest, len(raw.Highlights))
 	for i, h := range raw.Highlights {
-		hs[i] = t.Highlight{
+		hs[i] = &t.CreateHighlightRequest{
 			Text:     h.Text,
 			Location: h.Location.URL,
 			Note:     h.Note,
-			UserID:   userID,
+			UserID:   oID,
 			BookID:   raw.ASIN,
 		}
 	}
 
-	err = s.store.CreateHighlights(hs)
-	if err != nil {
-		log.Println("Error creating highlights: ", err)
-		return err
+	for _, h := range hs {
+		_, err := s.store.CreateHighlight(context.Background(), h)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
