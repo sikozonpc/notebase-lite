@@ -1,7 +1,7 @@
 package medium
 
-import t "github.com/sikozonpc/notebase/types"
+import types "github.com/sikozonpc/notebase/types"
 
 type Medium interface {
-	SendInsights(u *t.User, insights []*t.DailyInsight, authToken string) error
+	SendInsights(u *types.User, insights []*types.DailyInsight, authToken string) error
 }
